@@ -1,6 +1,6 @@
 /*
- * avrftdi - extension for avrdude, Wolfgang Moser, Ville Voipio
- * Copyright (C) 2011 Hannes Weisbach, Doug Springer
+ * avrftdi - extension for avrdude
+ * Copyright (C) 2011 Wolfgang Moser, Ville Voipio, Hannes Weisbach, Doug Springer
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 #ifndef avrftdi_h
 #define avrftdi_h
 
@@ -27,16 +25,12 @@
 extern "C" {
 #endif
 
-
-extern const char avrftdi_desc[];
-extern const char avrftdi_jtag_desc[];
-void avrftdi_initpgm(PROGRAMMER *pgm);
-void avrftdi_jtag_initpgm(PROGRAMMER *pgm);
+  extern const char avrftdi_desc[];
+  extern const char avrftdi_jtag_desc[];
+  void avrftdi_initpgm(PROGRAMMER *pgm);
+  void avrftdi_jtag_initpgm(PROGRAMMER *pgm);
 
 #ifdef __cplusplus
 }
 #endif
-
 #endif
-
-

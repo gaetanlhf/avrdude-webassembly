@@ -17,8 +17,6 @@
 .\" along with this program. If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\"
-.\" $Id$
-.\"
 .Dd January 15, 2023
 .Os
 .Dt AVRDUDE 1
@@ -27,36 +25,36 @@
 .Nd driver program for ``simple'' Atmel AVR MCU programmer
 .Sh SYNOPSIS
 .Nm
-.Fl p Ar partno
-.Op Fl b Ar baudrate
-.Op Fl r
-.Op Fl B Ar bitclock
-.Op Fl c Ar programmer-id
-.Op Fl C Ar config-file
-.Op Fl N
+.Op Fl p, \-part Ar partname
+.Op Fl b, \-baud Ar baudrate
+.Op Fl B, \-bitclock Ar bitclock
+.Op Fl c, \-programmer Ar programmer-id
+.Op Fl C, \-config Ar config-file
+.Op Fl N, \-noconfig
 .Op Fl A
-.Op Fl D
-.Op Fl e
+.Op Fl D, \-noerase
+.Op Fl e, \-erase
 .Oo Fl E Ar exitspec Ns
 .Op \&, Ns Ar exitspec
 .Oc
 .Op Fl F
 .Op Fl i Ar delay
-.Op Fl l Ar logfile
-.Op Fl n
-.Op Fl O
-.Op Fl P Ar port
-.Op Fl r
-.Op Fl q
+.Op Fl l, \-logfile Ar logfile
+.Op Fl n, \-test-memory
+.Op Fl O, \-osccal 
+.Op Fl P, \-port Ar port
+.Op Fl r, \-reconnect
+.Op Fl q, \-quell
 .Op Fl T Ar cmd
-.Op Fl t
-.Op Fl U Ar memory:op:filename:filefmt
-.Op Fl v
+.Op Fl t, \-terminal
+.Op Fl U, \-memory Ar memory:op:filename:filefmt
+.Op Fl v, \-verbose
 .Op Fl x Ar extended_param
-.Op Fl V
+.Op Fl V, \-noverify-memory
+.Op Fl \-version
 .Sh DESCRIPTION
 .Nm Avrdude
-is a program for downloading code and data to Atmel AVR
+is a program for downloading and uploading on-chip memories of Atmel AVR
 microcontrollers.
 .Nm Avrdude
 supports Atmel's STK500 programmer,
@@ -103,13 +101,13 @@ port.
 Connecting to a serial port emulated on top of USB is likely to not
 work at all, or to work abysmally slow.
 .Pp
-If you happen to have a Linux system with at least 4 hardware GPIOs 
-available (like almost all embedded Linux boards) you can do without 
+If you happen to have a Linux system with at least 4 hardware GPIOs
+available (like almost all embedded Linux boards) you can do without
 any additional hardware - just connect them to the SDO, SDI, RESET
 and SCK pins on the AVR and use the linuxgpio programmer type. It bitbangs
 the lines using the Linux sysfs GPIO interface. Of course, care should
 be taken about voltage level compatibility. Also, although not strictly
-required, it is strongly advisable to protect the GPIO pins from 
+required, it is strongly advisable to protect the GPIO pins from
 overcurrent situations in some way. The simplest would be to just put
 some resistors in series or better yet use a 3-state buffer driver like
 the 74HC244. Have a look at https://kolev.info/blog/2013/01/06/avrdude-linuxgpio/ for a more
@@ -188,15 +186,15 @@ AVR910, and the bootloader described in Atmel's application note
 AVR109 (which is also used by the AVR Butterfly evaluation board), are
 supported on a serial port.
 .Pp
-Atmel's JTAG ICE (mkI, mkII, and 3) is supported as well to up- or download memory
-areas from/to an AVR target (no support for on-chip debugging).
-For the JTAG ICE mkII, JTAG, debugWIRE and ISP mode are supported, provided
-it has a firmware revision of at least 4.14 (decimal).
-JTAGICE3 also supports all of JTAG, debugWIRE, and ISP mode.
-See below for the limitations of debugWIRE.
-For ATxmega devices, the JTAG ICE mkII is supported in PDI mode, provided it
-has a revision 1 hardware and firmware version of at least 5.37 (decimal).
-For ATxmega devices, the JTAGICE3 is supported in PDI mode.
+Atmel's JTAG ICE (mkI, mkII, and 3) is supported as well to uploading and
+download memory areas of an AVR target (no support for on-chip debugging).
+For the JTAG ICE mkII, JTAG, debugWIRE and ISP mode are supported,
+provided it has a firmware revision of at least 4.14 (decimal). JTAGICE3
+also supports all of JTAG, debugWIRE, and ISP mode. See below for the
+limitations of debugWIRE. For ATxmega devices, the JTAG ICE mkII is
+supported in PDI mode, provided it has a revision 1 hardware and firmware
+version of at least 5.37 (decimal). For ATxmega devices, the JTAGICE3 is
+supported in PDI mode.
 .Pp
 Atmel-ICE (ARM/AVR) is supported in all modes (JTAG, PDI for Xmega, debugWIRE,
 ISP, UPDI).
@@ -233,15 +231,15 @@ frequency of 6.8 MHz or more: factory-set AVR parts, which typically run
 on an internal oscillator between 1 MHz and 1.6 MHz, cannot be programmed
 using -c ch341a. If libftdi has  has been compiled in
 .Nm avrdude ,
-the avrftdi device adds support for many programmers using FTDI's 2232C/D/H 
-and 4232H parts running in MPSSE mode, which hard-codes (in the chip) 
+the avrftdi device adds support for many programmers using FTDI's 2232C/D/H
+and 4232H parts running in MPSSE mode, which hard-codes (in the chip)
 SCK to bit 1, SDO to bit 2, and SDI to bit 3. Reset is usually bit 4.
 .Pp
 The Atmel DFU bootloader is supported in both, FLIP protocol version 1
 (AT90USB* and ATmega*U* devices), as well as version 2 (Xmega devices).
 See below for some hints about FLIP version 1 protocol behaviour.
 .Pp
-The MPLAB(R) PICkit 4 and MPLAB(R) SNAP, are supported in JTAG, TPI, ISP,
+The MPLAB(R) PICkit 4/5 and MPLAB(R) SNAP, are supported in JTAG, TPI, ISP,
 PDI and UPDI mode.
 The Curiosity Nano board is supported in UPDI mode. It is dubbed
 .Dq PICkit on Board ,
@@ -259,9 +257,8 @@ In a nutshell, this programmer consists of simple USB->UART adapter, diode
 and couple of resistors. It uses serial connection to provide UPDI interface.
 See the texinfo documentation for more details and known issues.
 .Pp
-The jtag2updi programmer is supported,
-and can program AVRs with a UPDI interface.
-Jtag2updi is just a firmware that can be uploaded to an AVR,
+The jtag2updi programmer is supported, and can program AVRs with a UPDI
+interface. Jtag2updi is just a firmware that can be loaded onto an AVR,
 which enables it to interface with avrdude using the jtagice mkii protocol
 via a serial link.
 .Li https://github.com/ElTangas/jtag2updi
@@ -286,7 +283,7 @@ for Teensy specific options.
 .Pp
 Input files can be provided, and output files can be written in
 different file formats, such as raw binary files containing the data
-to download to the chip, Intel hex format, or Motorola S-record
+to write to the chip, Intel Hex format, or Motorola S-Record
 format.  There are a number of tools available to produce those files,
 like
 .Xr asl 1
@@ -328,17 +325,18 @@ In order to control all the different operation modi, a number of options
 need to be specified to
 .Nm avrdude .
 .Bl -tag -offset indent -width indent
-.It Fl p Ar partno
+.It Fl p \-part Ar partname
 This option specifies the MCU connected to the programmer. The MCU
 descriptions are read from the config file. To see a list of currently
-supported MCUs use ? as partno, which will print the part ids and official
-part names. In connection with -v, this will also print a list of variant
-part names followed by an optional colon, the package code and some
-absolute maximum ratings. The part id, their official part name, any of
-the full variant part names or their initial part up to a dash can be used
-to specify a part with the -p option. If -p ? is specified with a specific
-programmer, see -c below, then only those parts are output that the
-programmer expects to be able to handle, together with the programming
+supported MCUs use ? as partname, which will print the part ids and
+official part names. Depending on the used shell, ? may need to be quoted
+as in "?" or \\?. In connection with -v, this will also print a list of
+variant part names followed by an optional colon, the package code and
+some absolute maximum ratings. The part id, their official part name, any
+of the full variant part names or their initial part up to a dash can be
+used to specify a part with the -p option. If -p ? is specified with a
+specific programmer, see -c below, then only those parts are output that
+the programmer expects to be able to handle, together with the programming
 interface(s) that can be used in that combination. In reality there can be
 deviations from this list, particularly if programming is directly via a
 bootloader.
@@ -353,19 +351,18 @@ programmers talking the STK500v2 protocol.
 .It "AT90S2343"
 The AT90S2323 and ATtiny22 use the same algorithm.
 .It "ATmega2560, ATmega2561"
-Flash addressing above 128 KB is not supported by all
-programming hardware.  Known to work are jtag2, stk500v2,
-and bit-bang programmers.
+Flash addressing above 128 KB may not be supported by all
+programming hardware.
 .It "ATtiny11"
 The ATtiny11 can only be
 programmed in high-voltage serial mode.
 .El
-.It Fl p Ar wildcard/flags
+.It Fl p \-part Ar wildcard/flags
 Run developer options for MCUs that are matched by wildcard. Whilst
 their main use is for developers some flags can be of utility for users, e.g.,
 avrdude -p m328p/S outputs AVRDUDE's understanding of ATmega328P MCU properties;
 for more information run avrdude -p x/h.
-.It Fl b Ar baudrate
+.It Fl b \-baud Ar baudrate
 Override the RS-232 connection baud rate specified in the respective
 programmer's entry of the configuration file or defined by the default_baudrate
 entry in your user configuration file
@@ -373,7 +370,7 @@ entry in your user configuration file
 or
 .Pa ${HOME}/.avrduderc
 if no baudrate was defined for this programmer.
-.It Fl r
+.It Fl r \-reconnect
 Opens the serial port at 1200 baud and immediately closes it, waits 400 ms
 for each -r on the command line and then establishes communication with
 the programmer. This is commonly known as a "1200bps touch", and is used
@@ -381,7 +378,7 @@ to trigger programming mode for certain boards like Arduino Leonardo,
 Arduino Micro/Pro Micro and the Arduino Nano Every. Longer waits, and
 therefore multiple -r options, are sometimes needed for slower, less
 powerful hosts.
-.It Fl B Ar bitclock
+.It Fl B \-bitclock Ar bitclock
 Specify the bit clock period for the JTAG, PDI, TPI, UPDI, or ISP
 interface. The value is a floating-point number in microseconds.
 Alternatively, the value might be suffixed with "Hz", "kHz" or
@@ -406,7 +403,7 @@ will continue to use it until a different value is provided. This applies to
 "3rd gen"programmers (JTAGICE3, Atmel ICE, Power Debugger). "4th gen"
 programmers (PICkit 4, MPLAB SNAP) will store the last user-specified bitclock
 until the programmer is disconnected from the computer.
-.It Fl c Ar programmer-id
+.It Fl c \-programmer Ar programmer-id
 Use the programmer specified by the argument.  Programmers and their pin
 configurations are read from the config file (see the
 .Fl C
@@ -419,21 +416,21 @@ keyword in your
 .Pa ${HOME}/.config/avrdude/avrdude.rc
 or
 .Pa ${HOME}/.avrduderc
-file to assign a default programmer to keep from having to specify
-this option on every invocation.
-A full list of all supported programmers is output to the terminal 
-by using ? as programmer-id.
-If -c ? is specified with a specific part, see
--p above, then only those programmers are output that expect
-to be able to handle this part, together with the programming interface(s) that can be
-used in that combination. In reality there can be deviations from this list,
-particularly if programming is directly via a bootloader.
-.It Fl c Ar wildcard/flags
+file to assign a default programmer to keep from having to specify this
+option on every invocation. A full list of all supported programmers is
+output to the terminal by using ? as programmer-id. Depending on the used
+shell, ? may need to be quoted as in "?" or \\?. If -c ? is specified with
+a specific part, see -p above, then only those programmers are output that
+expect to be able to handle this part, together with the programming
+interface(s) that can be used in that combination. In reality there can be
+deviations from this list, particularly if programming is directly via a
+bootloader.
+.It Fl c \-programmer Ar wildcard/flags
 Run developer options for programmers that are matched by wildcard. Whilst
 their main use is for developers some flags can be of utility for users, e.g.,
 avrdude -c usbtiny/S shows AVRDUDE's understanding of usbtiny's properties;
 for more information run avrdude -c x/h.
-.It Fl C Ar config-file
+.It Fl C \-config Ar config-file
 Use the specified config file to load configuration data.  This file
 contains all programmer and part definitions that
 .Nm avrdude
@@ -442,7 +439,7 @@ See the config file, located at
 .Pa ${PREFIX}/etc/avrdude.conf ,
 which contains a description of the format.
 .Pp
-If 
+If
 .Ar config-file
 is written as
 .Pa +filename
@@ -451,7 +448,7 @@ files. This can be used to add entries to the configuration
 without patching your system wide configuration file. It can be used
 several times, the files are read in same order as given on the command
 line.
-.It Fl N
+.It Fl N \-noconfig
 Do not load the personal configuration file that is usually located at
 ~/.config/avrdude/avrdude.rc, ~/.avrduderc or in the same directory as the
 avrdude executable
@@ -469,107 +466,84 @@ Arduino bootloaders exhibit this behaviour; for this reason
 is engaged by default when specifying
 . Fl c
 arduino.
-.It Fl D
-Disable auto erase for flash.  When the
-.Fl U
-option with flash memory is specified,
+.It Fl D \-noerase
+Disable auto-erase for flash. When the
+.Fl U \-memory
+option for writing to any flash memory is specified,
 .Nm
 will perform a chip erase before starting any of the programming
-operations, since it generally is a mistake to program the flash
-without performing an erase first.  This option disables that.
-Auto erase is not used for ATxmega devices as these devices can
-use page erase before writing each page so no explicit chip erase
-is required.
-Note however that any page not affected by the current operation
-will retain its previous contents.
-Setting
+operations, since it generally is a mistake to program the flash without
+performing an erase first.  This option disables that. Auto-erase is not
+used for ATxmega parts nor for the UPDI (AVR8X family) parts as these can
+use page erase before writing each page so no explicit chip erase is
+required. Note, however, that any flash page not affected by the current
+operation will retain its previous contents. Setting
 .Fl D
 implies
 .Fl A.
-.It Fl e
-Causes a chip erase to be executed.  This will reset the contents of the
+.It Fl e \-erase
+Causes a chip erase to be executed. This will reset the contents of the
 flash ROM and EEPROM to the value
 .Ql 0xff ,
 and clear all lock bits.
-Except for ATxmega devices which can use page erase,
-it is basically a prerequisite command before the flash ROM can be
-reprogrammed again.  The only exception would be if the new
+Except for ATxmega and UPDI (AVR8X family) devices, all of which can use
+page erase, it is basically a prerequisite command before the flash ROM
+can be reprogrammed again.  The only exception would be if the new
 contents would exclusively cause bits to be programmed from the value
 .Ql 1
 to
 .Ql 0 .
-Note that in order to reprogram EEPROM cells, no explicit prior chip
+This option carries out the chip erase at the beginning, before any of the
+.Fl U,
+.Fl T
+or
+.Fl t
+options are processed. If a chip erase is required in at a certain
+position within the sequence of
+.Fl U,
+.Fl T
+or
+.Fl t
+options it is recommended to use -T erase instead which is processed in
+the given command line order.
+.Pp
+In absence of an explicit
+.Fl e
+or
+.Fl D
+option
+.Nm
+tries to augur from the command line whether or not the chip should be
+auto-erased at the beginning. If
+.Nm
+detects a
+.Fl U
+command that writes to flash then auto-erase will be carried out before
+any other programming unless a -T erase commad has been detected
+beforehand and unless flash is read before writing to it. For the purpose
+of this analysis any terminal command is considered to possibly read
+flash.
+.Pp
+Note that for reprogramming EEPROM cells, no explicit prior chip
 erase is required since the MCU provides an auto-erase cycle in that
 case before programming the cell.
 .It Xo Fl E Ar exitspec Ns
 .Op \&, Ns Ar exitspec
 .Xc
-By default,
-.Nm
-leaves the parallel port in the same state at exit as it has been
-found at startup.  This option modifies the state of the
-.Ql /RESET
-and
-.Ql Vcc
-lines the parallel port is left at, according to the
+Pass
 .Ar exitspec
-arguments provided, as follows:
-.Bl -tag -width noreset
-.It Ar reset
-The
-.Ql /RESET
-signal will be left activated at program exit, that is it will be held
-.Em low ,
-in order to keep the MCU in reset state afterwards.  Note in particular
-that the programming algorithm for the AT90S1200 device mandates that
-the
-.Ql /RESET
-signal is active
-.Em before
-powering up the MCU, so in case an external power supply is used for this
-MCU type, a previous invocation of
+to the chosen programmer. The interpretation of the exitspec parameter
+depends on the programmer itself. See below for a list of programmers
+accepting exitspec parameter options or issue
 .Nm
-with this option specified is one of the possible ways to guarantee this
-condition.
-.Em reset
-is supported by the linuxspi and flip2 programmer options, as well as all
-parallel port based programmers.
-.It Ar noreset
-The
-.Ql /RESET
-line will be deactivated at program exit, thus allowing the MCU target
-program to run while the programming hardware remains connected.
-.Em noreset
-is supported by the linuxspi and flip2 programmer options, as well as all
-parallel port based programmers.
-.It Ar vcc
-This option will leave those parallel port pins active
-.Pq \&i. \&e. Em high
-that can be used to supply
-.Ql Vcc
-power to the MCU.
-.It Ar novcc
-This option will pull the
-.Ql Vcc
-pins of the parallel port down at program exit.
-.It Ar d_high
-This option will leave the 8 data pins on the parallel port active.
-.Pq \&i. \&e. Em high
-.It Ar d_low
-This option will leave the 8 data pins on the parallel port inactive.
-.Pq \&i. \&e. Em low
-.El
-.Pp
-Multiple
-.Ar exitspec
-arguments can be separated with commas.
+-E help ... to see the options of the chosen programmer.
 .It Fl F
 Normally,
 .Nm
 tries to verify that the device signature read from the part is
 reasonable before continuing.  Since it can happen from time to time
 that a device has a broken (erased or overwritten) device signature
-but is otherwise operating normally, this options is provided to
+but is otherwise operating normally, this option is provided to
 override the check.
 Also, for programmers like the Atmel STK500 and STK600 which can
 adjust parameters local to the programming tool (independent of an
@@ -597,7 +571,7 @@ is running.
 On Win32 operating systems, a preconfigured number of cycles per
 microsecond is assumed that might be off a bit for very fast or very
 slow machines.
-.It Fl l Ar logfile
+.It Fl l \-logfile Ar logfile
 Use
 .Ar logfile
 rather than
@@ -607,18 +581,18 @@ Note that initial diagnostic messages (during option parsing) are still
 written to
 .Va stderr
 anyway.
-.It Fl n
+.It Fl n \-test-memory
 No-write: disables writing data to the MCU whilst processing -U
 (useful for debugging
 .Nm avrdude
 ). The terminal mode continues to write to the device.
-.It Fl O
-Perform a RC oscillator run-time calibration according to Atmel
+.It Fl O \-osccal
+Perform an RC oscillator run-time calibration according to Atmel
 application note AVR053.
 This is only supported on the STK500v2, AVRISP mkII, and JTAG ICE mkII
 hardware.
 Note that the result will be stored in the EEPROM cell at address 0.
-.It Fl P Ar port
+.It Fl P \-port Ar port
 Use
 .Ar port
 to identify the connection through which the programmer is attached. This
@@ -661,7 +635,8 @@ or
 To see a list of currently plugged-in serial ports use -P ?s. In order to
 see a list of all possible serial adapters known to
 .Nm
-use -P ?sa.
+use -P ?sa. Depending on the used shell, ? may need to be quoted as in "?"
+or \\?.
 .Pp
 On Win32 operating systems, the parallel ports are referred to as lpt1
 through lpt3, referring to the addresses 0x378, 0x278, and 0x3BC,
@@ -743,12 +718,9 @@ for a STK500.
 .Pp
 Note: The ability to handle IPv6 hostnames and addresses is limited to
 Posix systems (by now).
-.It Fl q
+.It Fl q \-quell
 Disable (or quell) output of the progress bar while reading or writing
 to the device.  Specify it more often for even quieter operations.
-.It Fl s, u
-These options used to control the obsolete "safemode" feature which
-is no longer present. They are silently ignored for backwards compatibility.
 .It Fl T Ar cmd
 Run terminal line
 .Ar cmd
@@ -758,13 +730,13 @@ of terminal commands the argument
 .Ar cmd
 will most likely need to be set in quotes, see your OS shell manual for
 details. See below for a detailed description of all terminal commands.
-.It Fl t
+.It Fl t \-terminal
 Tells
 .Nm
 to run an interactive terminal when it is its turn in relation to
 other -t interactive terminals, -T terminal commands and -U memory
 operations.
-.It Xo Fl U Ar memory Ns
+.It Xo Fl U \-memory Ar memory Ns
 .Ar \&: Ns Ar op Ns
 .Ar \&: Ns Ar filename Ns
 .Op \&: Ns Ar format
@@ -773,10 +745,31 @@ Perform a memory operation as indicated  when it is its turn in relation to
 other -t interactive terminals, -T terminal commands and -U memory
 operations. The
 .Ar memory
-field specifies the memory to operate on. The available memory types are
-device-dependent, the actual configuration can be viewed with the
+field specifies the memory to operate on. From version 8.0 the memory
+field can also be a comma-separated list of memories, eg,
+.Ar flash,eeprom ;
+also, Intel Hex or Motorola S-Record files generated by AVRDUDE can store
+multiple memories. The special memory
+.Ar ALL
+expands to all memories that a part has while
+.Ar all
+expands to all memories with exception of sub-memories.
+.Ar etc
+is the same as
+.Ar all ;
+this can be used to change the order in which memories are written to
+or read from file, eg,
+.Ar signature,etc
+is a list of all memories such that the
+.Ar signature
+memory comes first. It is possible to remove a memory from the list so far
+by preceding a minus or backslash, eg,
+.Ar all,-calibration .
+The available memory types are device-dependent, the actual configuration
+can be viewed with the
 .Cm part
 command in terminal mode.
+.Pp
 Typically, a device's memory configuration at least contains
 the memories
 .Ar flash ,
@@ -792,147 +785,28 @@ memory contains the three device signature bytes, which should
 be, but not always are, unique for the part. The
 .Ar lock
 memory of one or four bytes typically details whether or not external
-reading/writing of the flash memory, or parts of it, is allowed. Parts
-will also typically have fuse bytes, which are read/write memories for
-configuration of the device and calibration memories that typically
-contain read-only factory calibration values.
+reading/writing of the flash memory, or parts of it, is allowed. After
+restricting access via the lock memory, often the only way to unlock
+memory is via a chip erase. Parts will also typically have fuse bytes,
+which are read/write memories for configuration of the device and
+calibration memories that typically contain read-only factory calibration
+values.
 .Pp
-Classic devices may have the following memories in addition to eeprom, flash, signature and lock:
-.Bl -tag -width "  calibration" -compact
-.It   calibration
-One or more bytes of RC oscillator calibration data
-.It   efuse
-Extended fuse byte
-.It   fuse
-Fuse byte in devices that have only a single fuse byte
-.It   hfuse
-High fuse byte
-.It   lfuse
-Low fuse byte
-.It   lock
-Lock byte
-.It prodsig
-Signature, calibration byte and serial number in a small read-only memory,
-which is only documented to be available for ATmega324PB, ATmega328PB,
-ATtiny102 and ATtiny104; programmers may or may not be able to read this memory
-.It sigrow
-Memory alias for prodsig
-.It usersig
-Three extra flash pages for firmware settings; this memory is not erased
-during a chip erase. Only some classic parts,
-ATmega(64|128|256|644|1284|2564)RFR2, have a usersig memory. Usersig is
-different to flash in the sense that it can neither be accessed with ISP
-serial programming nor written to by bootloaders;
-.Nm
-offers JTAG programming of classic-part usersig memories. As with all
-flash-type memories the -U option can only write 0-bits but not 1-bits.
-Hence, usersig needs to be erased before a file can be uploaded to this
-memory region, e.g., using -T "erase usersig" -U
-usersig:w:parameters.hex:i
-.It io
-Volatile register memory; it cannot be accessed by external programming
-methods only by bootloaders, which has limited use unless the bootloader
-jumps to the application directly, i.e., without a WDT reset
-.It sram
-Volatile RAM memory; like io it cannot be accessed by external programming
-.El
+The flash memory, being physically implemented as NOR-memory, is special
+in the sense that it is normally only possible to program bits to change
+from 1 to 0. Before reprogramming takes place normally flash memory has
+to be erased. Older parts would only offer a chip erase to do so, which
+also erases EEPROM unless a fuse configuration preserves its contents. If
+AVRDUDE detects a -U option that writes to a flash memory it will
+automatically trigger a chip erase for these older parts.  ATxmegas or
+UPDI parts (AVR8X family) offer a page erase, and AVRDUDE takes advantage
+of that by erasing pages before programming them unless -e (chip erase) or
+-D (do not erase before writing) was requested. It should be noted that in
+absence of the -e chip erase option any ATxmega or UPDI flash pages not
+affected by the programming will retain their previous content.
 .Pp
-ATxmega devices have the following memories in addition to eeprom, flash, signature and lock:
-.Bl -tag -width "calibration" -compact
-.It application
-Application flash area
-.It apptable
-Application table flash area
-.It boot
-Boot flash area
-.It fuse0
-A.k.a. jtaguid: JTAG user ID for some devices
-.It fuse1
-Watchdog configuration
-.It fuse6
-Fault detection action configuration TC4/5 for ATxmega E series parts
-.It fuse Ns Em N
-Other fuse bytes of ATxmega devices, where
-.Em N
-is 2, 4 or 5, for system configuration
-.It prodsig
-The production signature row is a read-only memory section for factory
-programmed data such as the signature and calibration values for
-oscillators or analogue modules; it also contains a serial number that
-consists of the production lot number, wafer number and wafer coordinates
-for the part
-.It sigrow
-Memory alias for prodsig
-.It usersig
-Additional flash memory page that can be used for firmware settings; this
-memory is not erased during a chip erase
-.It io
-Volatile register memory;
-.Nm
-can read this memory but not write to it using external programming
-.It sram
-Volatile RAM memory; cannot be usefully accessed by external programming
-.El
-.Pp
-Modern 8-bit AVR devices have the following memories in addition to eeprom, flash, signature and lock:
-.Bl -tag -width "calibration" -compact
-.It fuse0
-A.k.a. wdtcfg: watchdog configuration
-.It fuse1
-A.k.a. bodcfg: brownout detection configuration
-.It fuse2
-A.k.a. osccfg: oscillator configuration
-.It fuse4
-A.k.a. tcd0cfg (not all devices): timer counter type D configuration
-.It fuse5
-A.k.a. syscfg0: system configuration 0
-.It fuse6
-A.k.a. syscfg1: system configuration 1
-.It fuse7
-A.k.a. append or codesize: either the end of the application code section or the code size in blocks of 256/512 bytes
-.It fuse8
-A.k.a. bootend or bootsize: end of the boot section or the boot size in blocks of 256/512 bytes
-.It fusea
-A.k.a. pdicfg: configures/locks updi access; it is the only fuse that consists of two bytes
-.It fuses
-A "logical" memory of up to 16 bytes containing all fuseX of a part, which can be
-used to program all fuses at the same time
-.It osc16err
-Two bytes typically describing the 16 MHz oscillator frequency error at 3 V and 5 V, respectively
-.It osc20err
-Two bytes typically describing the 20 MHz oscillator frequency error at 3 V and 5 V, respectively
-.It osccal16
-Two oscillator calibration bytes for 16 MHz
-.It osccal20
-Two oscillator calibration bytes for 20 MHz
-.It prodsig
-Read-only memory section for factory programmed data such as the
-signature, calibration values and serial number
-.It sigrow
-Memory alias for prodsig
-.It sernum
-Serial number with a unique ID for the part (10 or 16 bytes)
-.It tempsense
-Temperature sensor calibration values
-.It bootrow
-Extra page of memory that is only accessible by the MCU in bootloader
-code; UDPI can read and write this memory only when the device is
-unlocked; bootrow is not erased during chip erase
-.It userrow
-Extra page of EEPROM memory that can be used for firmware settings; this
-memory is not erased during a chip erase
-.It sib
-Special system information block memory with information about AVR family, chip revision etc.
-.It io
-Volatile register memory;
-.Nm
-can program this memory but this is of limited utility because anything
-written to the io memory will be undefined or lost after reset; writing to
-individual registers in the terminal can still be used, e.g., to test I/O
-ports
-.It sram
-Volatile RAM memory; can be read and written but contents will be lost after reset
-.El
+For a list of all known memories, please refer to the full documentation, eg,
+.Li https://github.com/avrdudes/avrdude/blob/main/avrdude.pdf
 .Pp
 The
 .Ar op
@@ -941,7 +815,10 @@ field specifies what operation to perform:
 .It Ar r
 read device memory and write to the specified file
 .It Ar w
-read data from the specified file and write to the device memory
+read data from the specified file and write to the device memories in the
+list; read-only memories in a memory list are skipped, as are fuses and
+lock bits when the programmer is a bootloader; writing to single read-only
+memories fails only if the contents differs between the file and memory
 .It Ar v
 read data from both the device and the specified file and perform a verify
 .El
@@ -959,13 +836,13 @@ can be one of:
 .It Ar i
 Intel Hex
 .It Ar I
-Intel Hex with comments on download and tolerance of checksum errors on upload
+Intel Hex with comments on reading from, and tolerance of checksum errors, writing to the AVR
 .It Ar s
-Motorola S-record
+Motorola S-Record
 .It Ar r
-raw binary; little-endian byte order, in the case of the flash ROM data
+raw binary; little-endian byte order, in the case of the flash data
 .It Ar e
-ELF (Executable and Linkable Format)
+ELF (Executable and Linkable Format, for input only)
 .It Ar m
 immediate mode; actual byte values are specified on the command line,
 separated by commas or spaces in place of the filename field of the -U
@@ -1016,8 +893,15 @@ followed by 0x00, and 0x01234 will occupy 4 bytes. See the description of
 the terminal write command for more details.
 .Pp
 In absence of an explicit file format, the default is to use auto
-detection for input files, and raw binary format for output files. Note
-that if a
+detection for input files, raw binary format for output files from a
+single memory read and Intel Hex with comments when an output file is
+generated from a list of memories. Note that while
+.Nm avrdude
+will generate a single output file from a memory list for all formats with
+the exception of elf (:e) it only recognises Intel hex (:I or :i),
+Motorola S-Record (:s) or elf files (:e, generated by the compiler) as
+valid multi-memory files when reading a file for verifying or writing
+memories. Note also that if a
 .Ar filename
 contains a colon as penultimate character the
 .Ar format
@@ -1041,13 +925,24 @@ This will only work if
 does not have a pair of colons in it that sandwich a single character
 as otherwise the first part might be interpreted as memory, and the single
 character as memory operation.
-.It Fl v
+.Pp
+A file name used for writing to flash that starts with urboot:
+autogenerates an urboot bootloader file. Try for example -c dryrun -U
+urboot:help for a list of features that determine the contents of the
+bootloader. Other than that there is detailed documentation for
+autogenerated files in the AVRDUDE pdf manual, eg, at
+.Li https://github.com/avrdudes/avrdude/blob/main/avrdude.pdf
+Writing urboot:... files to flash using -U has the desired side-effect of
+also writing all necessary fuse configurations for the bootloader to work.
+.It Fl v \-verbose
 Enable verbose output.
 More
 .Fl v
 options increase verbosity level.
-.It Fl V
-Disable automatic verify check when uploading data with -U.
+.It Fl V \-noverify-memory
+Disable automatic verify check when writing data to the AVR with -U.
+.It Fl \-version
+Print version and exit
 .It Fl x Ar extended_param
 Pass
 .Ar extended_param
@@ -1073,10 +968,10 @@ The
 .Ar addr
 and
 .Ar len
-parameters of the dump, read, write, save and erase commands can be
+parameters of the dump, read, disasm, write, save and erase commands can be
 negative with the same syntax as substring computations in perl or python.
 The table below details their meaning with respect to an example memory of size
-sz=0x800.
+sz=0x800 (2048 bytes).
 .Pp
 .nf
 addr    len  Memory interval     Comment
@@ -1104,7 +999,7 @@ hexadecimal and ASCII form.
 .It Ar dump memory addr
 Read from
 .Ar memory addr
-as many bytes as the most recent 
+as many bytes as the most recent
 .Ar dump memory addr len command
 with this very memory had specified (default 256 bytes), and display them.
 .It Ar dump memory
@@ -1123,6 +1018,107 @@ and display them (deprecated: use dump memory addr -1).
 Read all bytes from the specified memory, and display them (deprecated: use dump memory 0 -1).
 .It Ar read
 Can be used as an alias for dump.
+.It Ar disasm [opts] [arguments]
+Like dump, the disasm command displays a part of the specified memory,
+albeit by interpreting the memory contents as AVR opcodes and showing it
+as assembler source code. Unlike dump, the disasm command has options;
+these control how disasm displays its result (see below). Other than that,
+the syntax of specifying the memory and its to be processed interval is
+virtually the same as that of dump: the default disasm length is 32 bytes,
+though, and sometimes the length can be slightly shorter or longer than
+requested, so that the memory section for disasm aligns with opcodes.
+Disasm options, once set, stay in force until switched off, typically by
+changing the case of the option. This way, a simple disasm without further
+options can be used to step through memory keeping the appearance. Disasm
+knows the following options:
+.Bl -tag -offset indent -width indent
+.It -g
+Generate avr-gcc source: this sets -sOFQ and outputs a .text preamble and
+a main symbol unless the disassembly emits one itself; -G (the default)
+switches off -g and stops outputting a preamble
+.It -A
+Do not show addresses; -a (the default) shows addresses
+.It -O
+Do not show opcode bytes; -o (the default) show opcode bytes
+.It -C
+Do not show comments; -c (the default) show comments
+.It -f
+Show affected flags in SREG, eg, ---SVNZC for the sbiw opcode; -F (the
+default) do not show SREG flags
+.It -q
+Show the number of machine cycles that an opcode takes; -Q (the default)
+do not show the cycles
+.It -n
+Put the opcode full name into comment, eg, subtract immediate from word
+for the sbiw opcode; -N (the default) do not show the full opcode names
+.It -e
+Put a technical explanation of the opcode into the comment, eg, Rd+1:Rd
+<-- Rd+1:Rd - K for the sbiw opcode; -E (the default) do not show
+technical explanations
+.It -S
+Use AVR instruction set style: this means that register pairs are shown
+as, eg, in r31:30 instead of r30; -s (the default) use avr-gcc code style
+.It -L
+Do not preprocess labels; -l (the default) preprocess jump/call labels
+.It -U
+Do not show unused labels; -u (the default) show unused tagged labels
+.It -d
+Decode all opcodes including those that are undocumented; -D (the default)
+decode only opcodes that are valid for the part
+.It -z
+Zap the list of jumps and calls before disassembly
+.It -t=<file>
+Delete symbols from a previously read tagfile, if any, and read the tagfile
+<file> for assigning addresses to symbol names
+.El
+The tagfile is an ASCII file where each line describes a symbol for code
+label addresses (L), variable addresses in flash (P) and variables
+addresses in memory or I/O space (M). Hashmarks start a tagfile comment
+that extends to the end of the line and is ignored by disasm. Here is a
+defining example of how a tagfile looks like
+.nf
+---------------------------------------------------------------
+0x7f54 L        putch     Outputs a char # L are code labels
+0x7ffe P W 1    version16 A word integer # P are PGM data
+0x7f80 P A 4    headings  Column headers # Auto-aligned strings
+0x0100 M B 2048 sram      2 kB SRAM      # Memory address
+---------------------------------------------------------------
+.fi
+Code labels L can be, eg, function names in program space or goto labels.
+They use up to four columns separated by white space: the address, the
+letter L, the symbolic name of the label and an optional comment column
+for the symbol, which is copied by disasm into the disassembly comment
+column, should this label be referenced or used by the code. Variable
+symbols have a P or M in the second column; they can be bytes or words (16
+bits) as determined by the letter B or W in the third column and either
+single variables or arrays as specified by the multiplicity count in the
+forth column. P symbols, but not M symbols, can also encode chars (8
+bits), longs (32 bits), quads (64 bits) or octas (128 bits) as signified
+by the letters C, L, Q or O, respectively, or be the base location of
+nul-terminated strings as encoded by A or S in the third column. Out of
+necessity, the space occupied by A/S strings varies. The difference
+between A and S symbols is that the array of A strings might have an
+additional nul character to auto-align the space occupied by them to an
+even address. The fifth column is the symbolic name for the P or M address
+that can be used by disasm to output relevant addresses symbolically. P
+areas described in the tagfile also tell disasm that the corresponding
+area is not code and should not be disassembled as such; instead the
+directives .byte, .word, .asciz and sometimes at the end of the memory
+section .ascii are used for disassembly of that area. As with L labels, P
+and M variables may have an optional final comment column pertaining to
+the symbol that may be output in the disassembly column as and when the
+corresponding variables are used.
+.Pp
+Tagfiles are useful for disassembly to make the output of disasm more
+readable. They can be built manually and incrementally as one's
+understanding of the code grows. Alternatively, the bash shell script
+elf2tag can automatically generate a tag file from the .elf file that
+produced the flash contents:
+.Pp
+$ elf2tag file.elf >file.tag
+.Pp
+elf2tag uses the avr-objdump -d disassembly to create L labels and avr-nm
+to generate M symbols.
 .It Ar write memory addr data[,] {data[,]}
 Manually program the respective memory cells, starting at address
 .Ar addr ,
@@ -1144,6 +1140,16 @@ otherwise, the file name can be given a
 .Ar :f
 format specifier. In absence of a format suffix, the terminal will try
 to auto-detect the file format.
+.Pp
+A file name that starts with urboot: autogenerates an urboot bootloader
+file. Try for example the terminal command write flash urboot:help for a
+list of features that determine the contents of the bootloader. Other than
+that there is detailed documentation for autogenerated files in the AVRDUDE
+pdf manual, eg, at
+.Li https://github.com/avrdudes/avrdude/blob/main/avrdude.pdf
+It is worth noting here that writing urboot:... files to flash in the
+terminal does not write the necessary fuses for the bootloader to work (in
+contrast to -U operations).
 .Pp
 For integers, an optional case-insensitive suffix specifies the data size: HH
 8 bit, H/S 16 bit, L 32 bit, LL 64 bit. Suffix D indicates a 64-bit double, F
@@ -1177,10 +1183,12 @@ One trailing comma at the end of
 .Ar data
 items is ignored to facilitate copy & paste of lists.
 .It Ar write memory data
-The start address
-.Ar addr
-may be omitted if the size of the memory being written to is
-one byte.
+The start address may be omitted if the size of the memory being written
+to is one byte.
+.Ar data
+can be anything including a file.
+.It Ar write memory file
+The start address may be omitted when a file is written to the memory.
 .It Ar write memory addr len data[,] {data[,]} ...
 The ellipsis ... form writes the data to the entire memory intervall addressed by
 .Ar addr len
@@ -1201,9 +1209,41 @@ the address information and concatenate the chosen memory segments into
 the output file. If the file name is - then
 .Nm
 writes to stdout.
+.It Ar backup memlist file[:format]
+Backup one or more memories to the specified file using the selected
+format. The default format for a single-memory backup is :r (raw
+binary); for multi-memory backups it is :I (Intel Hex with comments).
+Memlist can be a comma separated list of memories just as in the
+.Ar -U
+command line argument.
+.Ar backup
+flushes the cache before reading memories.
+.It Ar restore memlist file[:format]
+Restore one or more memories from the specified file. It is the user's
+responsibility to erase memories as needed beforehand: some paged memories
+look like NOR-memory when using certain programmers, meaning programming
+cannot set bits to 1 (eg, flash under most programmers). These memories
+need to be erased beforehand using the erase command (see below). The
+format only needs to be specified if it cannot be automatically detected,
+eg, when the file is - for standard input. Memlist can be a comma
+separated list of memories just as in the
+.Ar -U
+command line argument.
+.Ar restore
+flushes the cache before writing memories and resets the cache after
+writing memories. Note that restoring read-only memories verifies file
+contents with the corresponding microprocessor's memories.
+.It Ar verify memlist file[:format]
+Compare one or more memories with the specified file.
+Memlist can be a comma separated list of memories just as in the
+.Ar -U
+command line argument.
+.Ar verify
+flushes the cache before verifying memories.
 .It Ar erase
-Perform a chip erase and discard all pending writes to EEPROM and flash.
-Note that EEPROM will be preserved if the EESAVE fuse bit is set.
+Perform a chip erase and discard all pending writes to flash, EEPROM and bootrow.
+Note that EEPROM will be preserved if the EESAVE fuse bit is active, ie, had
+a corresponding value at the last reset prior to the operation.
 .It Ar erase memory
 Erase the entire specified memory.
 .It Ar erase memory addr len
@@ -1213,8 +1253,8 @@ Synchronise with the device all pending writes to flash, EEPROM, bootrow and
 usersig. With some programmer and part combinations, flash (and sometimes
 EEPROM, too) looks like a NOR memory, i.e., a write can only clear bits,
 never set them. For NOR memories a page erase or, if not available, a chip
-erase needs to be issued before writing arbitrary data. Bootrow and usersig are
-generally unaffected by a chip erase. When a memory looks like a NOR
+erase needs to be issued before writing arbitrary data. Usersig is
+unaffected by a chip erase. When a memory looks like a NOR
 memory, either page erase is deployed (e.g., with parts that have PDI/UPDI
 interfaces), or if that is not available, both EEPROM and flash caches are
 fully read in, a chip erase command is issued and both EEPROM and flash
@@ -1247,7 +1287,7 @@ values of all matching properties are displayed.
 Show all possible values of the named configuration property (notice the
 trailing =). The one that is currently set is the only one not commented
 out. As before, wildcards or initial strings are permitted.
-.It Ar config {<-f|-v>} <property>=<value> {<-f|-v>}
+.It Ar config {<-f|-v|-c>} <property>=<value> {<-f|-v|-c>}
 Modify the named configuration property to the given value. The
 corresponding fuse or lock bits will be changed immediately but the change
 will normally only take effect the next time the part is reset, at which
@@ -1255,7 +1295,10 @@ point the fuses and lock bits are utilised. Value can either be a valid
 integer or one of the symbolic mnemonics, if known. Wildcards or initial
 strings are permitted for either the property or the assigned mnemonic
 value, but an assignment only happens if both the property and the name
-can be uniquely resolved.
+can be uniquely resolved. Option -v shows the value of the assigned
+configuration property by reading it again from the fuse. In absence of -v
+the option -c confirms the new value of the configuration property only if
+it has changed.
 .Pp
 It is quite possible, as is with direct writing to the underlying fuses
 and lock bits, to brick a part, i.e., make it unresponsive to further
@@ -1504,6 +1547,34 @@ might leave the EEPROM unerased, at least on some
 versions of the bootloader.
 .Ss Programmers accepting extended parameters
 .Bl -tag -offset indent -width indent
+.It Ar dryrun
+.It Ar dryboot
+These two programmers emulate programming and accept the following parameters:
+.Bl -tag -offset indent -width indent
+.It Ar init
+Initialise memories with human-readable patterns. Flash memory will be
+randomly configured with respect to bootloader, data and code length.
+Patterns can best be seen with fixed-width font and the :I format
+by inspecting the generated hex file or by using, eg, -U flash:r:-:I.
+Patterns in flash memory are executable and represent benign AVR code, ie,
+no I/O memory access. Choose a fixed seed for reproducible results.
+.It Ar init=<n>
+Shortcut for -x init -x seed=<n> (see below)
+.It Ar random
+Initialise memories with random code and values. Flash memory will be
+randomly configured with respect to bootloader, data and code length.
+Random code in flash will be benign, that is, not accessing I/O memories,
+SRAM or flash. Choose a fixed seed for reproducible results.
+.It Ar random=<n>
+Shortcut for -x random -x seed=<n>
+.It Ar seed=<n>
+Seed random number generator with <n>; the default is time(NULL).
+Setting this option with a fixed n > 0 will make the random choices
+reproducible, ie, they will stay the same between different avrdude
+runs.
+.It Ar help
+Show help menu and exit.
+.El
 .It Ar JTAG ICE mkII
 .It Ar JTAGICE3
 .It Ar Atmel-ICE
@@ -1532,14 +1603,14 @@ Other JTAG units might require a different bit shift count.
 .sp 0.5
 High-voltage UPDI programming is used to enable a UPDI pin that has previously
 been set to RESET or GPIO mode. Use
-.Ar -xhvupdi
+.Ar -x hvupdi
 to enable high-voltage UPDI initialization for targets that supports this.
 .It Ar vtarg=VALUE, vtarg
 .Nm Power Debugger only
 .sp 0.5
 The voltage generator can be enabled by setting a target voltage.
 The current set-voltage can be read by
-.Ar -xvtarg
+.Ar -x vtarg
 alone.
 .It Ar help
 Show help menu and exit.
@@ -1552,10 +1623,28 @@ Switch programmer to AVR or PIC mode, then exit: the PICkit 4 and MPLAB SNAP
 programmer can only be utilised by
 .Nm
 when in AVR mode. Use
-.Ar -xmode=avr
+.Ar -x mode=avr
 for switching to AVR mode, or
-.Ar -xmode=pic
+.Ar -x mode=pic
 for switching to PIC mode.
+.It Ar help
+Show help menu and exit.
+.El
+.It Ar PICkit 5
+.It Ar PICkit 4 (PIC mode)
+.Bl -tag -offset indent -width indent
+.It Ar vtarg=<voltage>
+Specify a voltage between 1.8 and 5.5 V that the programmer should supply
+to the target. If there is already a valid voltage applied to the VTG Pin,
+this setting will be ignored. When AVRDUDE detects an external voltage outside
+of this range, it will terminate the operation. You can disable this check by
+setting the voltage to 0 V. If an XMEGA part was selected, a requested voltage
+above 3.49 V will lead to an abort of operation. 
+.It Ar hvupdi
+High-voltage UPDI programming is used to enable a UPDI pin that has previously
+been set to RESET or GPIO mode. Use -x hvupdi to enable high-voltage UPDI
+initialization for supported targets. Depending on the target, the HV pulse will
+be applied either on the RST pin, or the UPDI pin.
 .It Ar help
 Show help menu and exit.
 .El
@@ -1564,7 +1653,7 @@ Show help menu and exit.
 .It Ar suffer=VALUE, suffer
 The SUFFER register allows the user to modify the behavior of the on-board mEDBG.
 The current state can be read by
-.Ar -xsuffer
+.Ar -x suffer
 alone.
 .Bl -tag -offset indent -width indent
 .It Bit 7 ARDUINO:
@@ -1584,7 +1673,7 @@ Fuses are safe-masked when bit sent to 1. Fuses are unprotected when set to 0
 .It Ar vtarg_switch=VALUE, vtarg_switch
 The on-board target voltage switch can be turned on or off by writing a 1 or
 a 0. The current state can be read by
-.Ar -xvtarg_switch
+.Ar -x vtarg_switch
 alone.
 Note that the target power switch will always be on after a power cycle.
 Also note that the smaller Xplained Nano boards does not have a target power switch.
@@ -1596,7 +1685,7 @@ Show help menu and exit.
 .It Ar vtarg=VALUE, vtarg
 The generated on-board target voltage can be changed by specifying a new voltage.
 The current set-voltage can be read by
-.Ar -xvtarg
+.Ar -x vtarg
 alone.
 .It Ar help
 Show help menu and exit.
@@ -1607,16 +1696,16 @@ Show help menu and exit.
 .It Ar vtarg=VALUE, vtarg
 The generated on-board target voltage can be changed by specifying a new voltage.
 The current set-voltage can be read by
-.Ar -xvtarg
+.Ar -x vtarg
 alone.
 .It Ar fosc=VALUE[MHz|M|kHz|k|Hz|H], fosc
 Set the programmable oscillator frequency. The current frequency can be read by
-.Ar -xfosc
+.Ar -x fosc
 alone.
 .It Ar varef=VALUE, varef
 The generated on-board analog reference voltage can be changed by specifying
 a new reference voltage. The current reference voltage can be read by
-.Ar -xvaref
+.Ar -x varef
 alone.
 .It Ar varef[0,1]=VALUE, varef[0,1]
 .Nm STK600 only
@@ -1624,9 +1713,9 @@ alone.
 The generated on-board analog reference voltage for channel 0 or channel 1 can
 be changed by specifying a new reference voltage.
 The current reference voltage can be read by
-.Ar -xvaref0
+.Ar -x varef0
 or
-.Ar -xvaref1
+.Ar -x varef1
 alone.
 .It Ar attemps[=<1..99>]
 .Nm STK500V1 only
@@ -1636,6 +1725,13 @@ Defaults to 10 if not specified.
 .It Ar xtal=VALUE[MHz|M|kHz|k|Hz|H]
 Defines the XTAL frequency of the programmer if it differs from 7.3728 MHz of the
 original STK500. Used by avrdude for the correct calculation of fosc and sck.
+.It Ar help
+Show help menu and exit.
+.El
+.It Ar AVR109
+.Bl -tag -offset indent -width indent
+.It Ar autoreset
+Toggle RTS/DTR lines on port open to issue a hardware reset.
 .It Ar help
 Show help menu and exit.
 .El
@@ -1658,7 +1754,7 @@ C programming language.
 .Bl -tag -offset indent -width indent
 .It Ar no_blockmode
 Disables the default checking for block transfer capability.
-Use 
+Use
 .Ar no_blockmode
 only if your
 .Ar AVR910
@@ -1671,13 +1767,15 @@ Show help menu and exit.
 .It Ar attemps[=<1..99>]
 Specify how many connection retry attemps to perform before exiting.
 Defaults to 10 if not specified.
+.It Ar noautoreset
+Don't toggle RTS/DTR lines on port open to prevent a hardware reset.
 .It Ar help
 Show help menu and exit.
 .El
 .It Ar Urclock
 .Bl -tag -offset indent -width indent
 .It Ar showall
-Show all info for the connected part, then exit. The -xshow... options
+Show all info for the connected part, then exit. The -x show... options
 below can be used to assemble a bespoke response consisting of a subset
 (or only one item) of all available relevant information about the
 connected part and bootloader.
@@ -1686,7 +1784,7 @@ Show a unique Urclock ID stored in either flash or EEPROM of the MCU, then exit.
 .It Ar id=<E|F>.<addr>.<len>
 Historically, the Urclock ID was a six-byte unique little-endian number
 stored in Urclock boards at EEPROM address 257. The location of this
-number can be set by the -xid=<E|F>.<addr>.<len> extended parameter. E
+number can be set by the -x id=<E|F>.<addr>.<len> extended parameter. E
 stands for EEPROM and F stands for flash. A negative address addr counts
 from the end of EEPROM and flash, respectively. The length len of the
 Urclock ID can be between 1 and 8 bytes.
@@ -1695,7 +1793,7 @@ Show the last-modified date of the input file for the flash application,
 then exit. If the input file was stdin, the date will be that of the
 programming.  Date and filename are part of the metadata that the urclock
 programmer stores by default in high flash just under the bootloader; see also
--xnometadata.
+-x nometadata.
 .It Ar showfilename
 Show the input filename (or title) of the last flash writing session, then exit.
 .It Ar title=<string>
@@ -1727,7 +1825,7 @@ i.e., typically top of flash, so the urclock programmer can look up the
 bootloader size itself. In backward-compatibility mode, when programming
 via other bootloaders, this option can be used to tell the programmer the
 size, and therefore the location, of the bootloader.
-.It Ar vectornum=<arg>
+.It Ar vectornum=<n>
 Manual override for vector number. Urboot bootloaders put the vector
 number used by a vector bootloader into a table at the top of flash, so
 this option is normally not needed for urboot bootloaders. However, it is
@@ -1748,12 +1846,12 @@ with 0xff. If this option is specified, the urclock programmer will assume
 that the bootloader cannot erase the chip itself. The option is useful
 for backwards-compatible bootloaders that do not implement chip erase.
 .It Ar restore
-Upload unchanged flash input files and trim below the bootloader if
+Write unchanged flash input files and trim below the bootloader if
 needed. This is most useful when one has a backup of the full flash and
 wants to play that back onto the device. No metadata are written in this
 case and no vector patching happens either if it is a vector bootloader.
-However, for vector bootloaders, even under the option -xrestore an
-input file will not be uploaded for which the reset vector does not point
+However, for vector bootloaders, even under the option -x restore an
+input file will not be written to the AVR for which the reset vector does not point
 to the vector bootloader. This is to avoid writing an input file to the
 device that would render the vector bootloader not functional as it would
 not be reached after reset.
@@ -1769,20 +1867,22 @@ title) and no date either.
 On writing to flash do not store metadata except the metadata code byte
 0xff saying there are no metadata.  In particular, no data store frame is
 programmed.
+.It Ar noautoreset
+Don't toggle RTS/DTR lines on port open to prevent a hardware reset.
 .It Ar nometadata
 Do not support any metadata. The full flash besides the bootloader is
 available for the application. If the application is smaller than the
 available space then a metadata code byte 0xff is stored nevertheless to
 indicate there are no further metadata available. In absence of
--xnometadata, the default for the urclock programmer is to write as much
+-x nometadata, the default for the urclock programmer is to write as much
 metadata (filename, data and store information) as the size of the
-uploaded application and the other extended options allow. The subtle
-difference between -xnometadata and -xnostore is that the latter always
+application and the other extended options allow. The subtle
+difference between -x nometadata and -x nostore is that the latter always
 explicitly stores in flash that no further metadata are available, so that
 a such prepared flash can always be queried with
 .Nm
--xshowall. In contrast to this, it cannot be guaranteed that a -xshowall
-query on flash prepared with -xnometadata yields useful results.
+-x showall. In contrast to this, it cannot be guaranteed that a -x showall
+query on flash prepared with -x nometadata yields useful results.
 .It Ar delay=<n>
 Add a <n> ms delay after reset. This can be useful if a board takes a
 particularly long time to exit from external reset. <n> can be negative,
@@ -1791,14 +1891,14 @@ shortened accordingly.
 .It Ar strict
 Urclock has a faster, but slightly different strategy than -c arduino to
 synchronise with the bootloader; some stk500v1 bootloaders cannot cope
-with this, and they need the -xstrict option.
+with this, and they need the -x strict option.
 .It Ar help
 Show help menu and exit.
 .El
 .It Ar buspirate
 .Bl -tag -offset indent -width indent
 .It Ar reset=cs,aux,aux2
-The default setup assumes the BusPirate's CS output pin connected to 
+The default setup assumes the BusPirate's CS output pin connected to
 the RESET pin on AVR side. It is however possible to have multiple AVRs
 connected to the same BP with SDI, SDO and SCK lines common for all of them.
 In such a case one AVR should have its RESET connected to BusPirate's
@@ -1810,9 +1910,9 @@ pin and if your BusPirate has an
 pin (only available on BusPirate version v1a with firmware 3.0 or newer)
 use that to activate RESET on the third AVR.
 .Pp
-It may be a good idea to decouple the BusPirate and the AVR's SPI buses from 
+It may be a good idea to decouple the BusPirate and the AVR's SPI buses from
 each other using a 3-state bus buffer. For example 74HC125 or 74HC244 are some
-good candidates with the latches driven by the appropriate reset pin (cs, 
+good candidates with the latches driven by the appropriate reset pin (cs,
 aux or aux2). Otherwise the SPI traffic in one active circuit may interfere
 with programming the AVR in the other design.
 .It Ar spifreq=<0..7>
@@ -1840,12 +1940,12 @@ The only advantage of the "raw-wire" mode is the different SPI frequencies
 available. Paged writing is not implemented in this mode.
 .It Ar ascii
 Attempt to use ASCII mode even when the firmware supports BinMode (binary
-mode). 
+mode).
 BinMode is supported in firmware 2.7 and newer, older FW's either don't
-have BinMode or their BinMode is buggy. ASCII mode is slower and makes 
+have BinMode or their BinMode is buggy. ASCII mode is slower and makes
 the above
 .Ar reset= , spifreq=
-and 
+and
 .Ar rawfreq=
 parameters unavailable. Be aware that ASCII mode is not guaranteed to work
 with newer firmware versions, and is retained only to maintain compatibility
@@ -1856,22 +1956,22 @@ whole pages to be written to AVR flash memory at once, resulting in a
 significant write speed increase. If use of this mode is not desirable for some
 reason, this option disables it.
 .It Ar nopagedread
-Newer firmware versions support in binary mode SPI command some AVR Extended 
+Newer firmware versions support in binary mode SPI command some AVR Extended
 Commands. Using the "Bulk Memory Read from Flash" results in a
 significant read speed increase. If use of this mode is not desirable for some
 reason, this option disables it.
 .It Ar cpufreq=<125..4000>
-This sets the AUX pin to output a frequency of 
+This sets the AUX pin to output a frequency of
 .Ar n
 kHz. Connecting
-the AUX pin to the XTAL1 pin of your MCU, you can provide it a clock, 
+the AUX pin to the XTAL1 pin of your MCU, you can provide it a clock,
 for example when it needs an external clock because of wrong fuses settings.
-Make sure the CPU frequency is at least four times the SPI frequency.  
+Make sure the CPU frequency is at least four times the SPI frequency.
 .It Ar serial_recv_timeout=<1...>
-This sets the serial receive timeout to the given value. 
-The timeout happens every time avrdude waits for the BusPirate prompt. 
-Especially in ascii mode this happens very often, so setting a smaller value 
-can speed up programming a lot. 
+This sets the serial receive timeout to the given value.
+The timeout happens every time avrdude waits for the BusPirate prompt.
+Especially in ascii mode this happens very often, so setting a smaller value
+can speed up programming a lot.
 The default value is 100ms. Using 10ms might work in most cases.
 .It Ar help
 Show help menu and exit.
@@ -1916,6 +2016,8 @@ Add a <n> milliseconds delay after resetting the part through toggling the
 DTR/RTS lines. This can be useful if a board takes a particularly long
 time to exit from external reset. <n> can be negative, in which case the
 default 100 ms delay after issuing reset will be shortened accordingly.
+.It Ar noautoreset
+Don't toggle RTS/DTR lines on port open to prevent a hardware reset.
 .It Ar help
 Show help menu and exit.
 .El
@@ -1923,11 +2025,11 @@ Show help menu and exit.
 Connection to the PICkit2 programmer:
 .Bd -literal
 (AVR)    (PICkit2)
-RST  -   VPP/MCLR (1) 
-VDD  -   VDD Target (2) -- possibly optional if AVR self powered 
-GND  -   GND (3) 
+RST  -   VPP/MCLR (1)
+VDD  -   VDD Target (2) -- possibly optional if AVR self powered
+GND  -   GND (3)
 SDI  -   PGD (4)
-SCLK -   PDC (5) 
+SCLK -   PDC (5)
 SDO  -   AUX (6)
 .Ed
 .Bl -tag -offset indent -width indent
@@ -1988,6 +2090,79 @@ the CS line being managed outside the application.
 .It Ar help
 Show help menu and exit.
 .El
+.It Ar serprog
+.Bl -tag -offset indent -width indent
+.It Ar cs
+Sets the chip select (CS) to use on supported programmers.
+Programmers supporting the 0x16 serprog command can have more than the default CS (0).
+This option allows to choose these additional CSes (1, 2, ...) for programming the AVR.
+.It Ar help
+Show help menu and exit.
+.El
+.El
+.Ss Programmers accepting exitspec parameter
+Currently, only the flip2, linuxspi, linuxgpio, raspberry_pi_gpio,
+pickit4_mplab, pickit5 and old-school parallel port programmers such as
+stk200 and dapa support exitspec parameter.
+These let the user decide in which state the programmer pins after ended programming session.
+Multiple exitspec options can be separated with commas.
+.Bl -tag -offset indent -width indent
+.It Ar flip2
+.It Ar linuxspi
+.It Ar linuxgpio
+.It Ar raspberry_pi_gpio
+.It Parallel port programmers
+.Bl -tag -offset indent -width indent
+.It Ar help
+Show help menu and exit.
+.It Ar reset
+The
+.Ql /RESET
+signal will be left activated at program exit, that is it will be held
+.Em low ,
+in order to keep the MCU in reset state afterwards.  Note in particular
+that the programming algorithm for the AT90S1200 device mandates that
+the
+.Ql /RESET
+signal is active
+.Em before
+powering up the MCU, so in case an external power supply is used for this
+MCU type, a previous invocation of
+.Nm
+with this option specified is one of the possible ways to guarantee this
+condition.
+.It Ar noreset
+The
+.Ql /RESET
+line will be deactivated at program exit, thus allowing the MCU target
+program to run while the programming hardware remains connected.
+.El
+.It Parallel port programmers
+.Bl -tag -offset indent -width indent
+.It Ar vcc
+This option will leave those parallel port pins active
+.Pq \&i. \&e. Em high
+that can be used to supply
+.Ql Vcc
+power to the MCU.
+.It Ar novcc
+This option will pull the
+.Ql Vcc
+pins of the parallel port down at program exit.
+.It Ar d_high
+This option will leave the 8 data pins on the parallel port active.
+.Pq \&i. \&e. Em high
+.It Ar d_low
+This option will leave the 8 data pins on the parallel port inactive.
+.Pq \&i. \&e. Em low
+.El
+.It Ar Pickit 4 (MPLAB)
+.It Ar Pickit 5
+.Bl -tag -offset indent -width indent
+.It Ar vcc
+This option will leave the power supply from the programmer enabled after
+avrdude finished the operation. Disabled by default.
+.El
 .El
 .Sh FILES
 .Bl -tag -offset indent -width /dev/ppi0XXX
@@ -2018,7 +2193,7 @@ Alternative location of the per-user configuration file if above file does not e
 Initialization file for the
 .Xr readline 3
 library
-.It Pa <prefix>/doc/avrdude/avrdude.pdf
+.It Pa <prefix>/share/doc/avrdude/avrdude.pdf
 User manual
 .El
 .\" .Sh EXAMPLES
@@ -2055,7 +2230,9 @@ normal ISP communication.
 .Pp
 The AVR microcontroller product description can be found at
 .Pp
-.Dl "https://www.microchip.com/en-us/products/microcontrollers-and-microprocessors/8-bit-mcus/avr-mcus"
+.nf
+https://www.microchip.com/en-us/products/microcontrollers-and-microprocessors/8-bit-mcus/avr-mcus
+.fi
 .\" .Sh HISTORY
 .Sh AUTHORS
 .Nm Avrdude
@@ -2091,6 +2268,6 @@ using USBtinyISP, and send must be a multiple of four bytes.
 .Pp
 The avrftdi driver allows one to select specific devices using any combination of vid,pid
 serial number (usbsn) vendor description (usbvendoror part description (usbproduct)
-as seen with lsusb or whatever tool used to view USB device information. Multiple 
+as seen with lsusb or whatever tool used to view USB device information. Multiple
 devices can be on the bus at the same time. For the H parts, which have multiple MPSSE
 interfaces, the interface can also be selected.  It defaults to interface 'A'.

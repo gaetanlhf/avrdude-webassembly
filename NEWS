@@ -1,32 +1,207 @@
-$Id$
-
 Approximate change log for AVRDUDE by version.
 
 (For detailed changes, see the version control system logs.)
 
 ----------------------------------------------------------------------
-Changes since version 7.3:
+Changes in version 8.1:
 
   * Major changes compared to the previous version:
 
   * New devices supported:
 
+    - AVR128DA28S, AVR128DA32S, AVR128DA48S, AVR128DA64S
+    - AVR64DA28S, AVR64DA32S, AVR64DA48S, AVR64DA64S
+    - AVR32DA28S, AVR32DA32S, AVR32DA48S
+    - AVR32EB14, AVR32EB20, AVR32EB28, AVR32EB32
+    - AVR32SD20, AVR32SD28, AVR32SD32
+
   * New programmers supported:
 
+    - pickit4_mplab = pickit4_mplab_jtag
+      pickit4_mplab_dw
+      pickit4_mplab_isp
+      pickit4_mplab_pdi
+      pickit4_mplab_tpi
+      pickit4_mplab_updi
+
+    - pickit5 = pickit5_jtag
+      pickit5_dw
+      pickit5_isp
+      pickit5_pdi
+      pickit5_tpi
+
+    - pickit_basic = pickit_basic_jtag = pickit_basic_mplab = pickit_basic_mplab_jtag
+      pickit_basic_dw = pickit_basic_mplab_dw
+      pickit_basic_isp = pickit_basic_mplab_isp
+      pickit_basic_pdi = pickit_basic_mplab_pdi
+      pickit_basic_tpi = pickit_basic_mplab_tpi
+      pickit_basic_updi = pickit_basic_mplab_updi
+
+    - snap_mplab = snap_mplab_jtag
+      snap_mplab_dw
+      snap_mplab_isp
+      snap_mplab_pdi
+      snap_mplab_tpi
+      snap_mplab_updi
+
+    - snap_dw
+
+    - pickit4_dw
+
+  * New serial adapters supported:
+
   * Issues fixed:
+
+    - Missing devices in udev rules output? #1915
+    - AVR-Doper support has been broken since version 6.4 #1626
+    - CI: upload-artifacts@v3 fails #1944
+    - Linuxspi won't connect #1929
+    - Fails to build on Windows with recent clang #1940
+    - Support options such as --part #1922
+    - Corrupt buffer in progressbar header #1970
+    - linuxgpio does not release RESET line on failure #1972
+    - ser_posix.c: ser_recv times out at low baudrates #1982
+    - Regression: arduino_as_isp FW crashed with -B32 #1978
+    - DEFAULT_SPI_PORT appears to be undefined #1923
+    - Avrdude hangs if valid serial port specified #1986
+    - Compiler warnings #1988
+    - Display issues under Windows #1991
+    - SNAP in "MPLAB mode" has an incorrect USB VID #1999
+    - disasm -g can result in code that avr-gcc fails #1997
+    - -U urboot:..._show wrongly auto-erases the chip #1996
+    - MPLAB programmers can't write to Xmega boot memory #2028
+
+  * Pull requests:
+
+    - Add AVR128DAxxS parts #1918
+    - Update usbpids in avrdude.conf #1919
+    - Add extra version information to avrdude output #1927
+    - CI: Ensure only supported configure options are used
+          (--enable-option-checking=fatal) #1934
+    - Document elf2tag script #1916
+    - Add AVR32EBxx parts #1932
+    - Fix ATxmega fuses memory sizes #1933
+    - Fix avrdoper header sequence for hidusb #1937
+    - Fix GitHub upload artifact #1945
+    - PICKit5 ISP, dW, TPI, JTAG and PDI support #1935
+    - Ensure linuxspi part is up for 100 ms before reset #1939
+    - Fix missing stdlib.h include for free() #1941
+    - Add long options #1936
+    - Add docs and release badges to README #1948
+    - Correct PICkit5 programmer type entries #1949
+    - Shorten ID of ATA parts #1950
+    - Shorten ID of LGT parts #1951
+    - Suggest compatible command for SNAP/PICKit4 in PIC mode #1947
+    - Add AVR64DAnnS, AVR32DAnnS and AVR32SDnn #1955
+    - Fix variant errors introduced in recent .atdf versions #1958
+    - Add PICkit Basic programmer #1959
+    - Add --version option #1962
+    - Add WDT type info to avrintel.c #1963
+    - Remove spurious s from AVR32SDnn part id #1964
+    - Remove #include "usbdevs.h" from libavrdude.h #1965
+    - Add PICkit Basic Documentation #1966
+    - Remove progbuf as it's no longer needed #1971
+    - Autogenerate urboot bootloaders #1974
+    - Ensure part is active before starting bit-banged ISP programming
+      add linuxgpio -E support #1973
+    - Alias PICkit Basic programmer names #1975
+    - Option to keep Vcc on for PICkit4/5 after exit #1976
+    - Set DEFAULT_SPI_PORT #1977
+    - Model programmer ability to set bitclock #1981
+    - Retrigger ser_posix.c ser_recv() timeout #1983
+    - Fix r/w timeout for Windows ser_send() #1987
+    - Supress compiler warnings #1989
+    - Explain syntax verbally & avoid >= display for Windows #1992
+    - Extend -c urclock to work with lower baud rates #1993
+    - Fix incorrect MPLAB SNAP VID #2000
+    - Improve urboot: and disasm #1998
+    - Bug fix for AVR32SD28 USERROW memory write #2014
+    - Draft implementation of NVM v6 #2008
+    - Toughen command-line parsing before auto-erase #2006
+    - Only offer terminal disasm for 8-bit AVRs #2005
+    - Devicepack update #2004
+    - Fix incorrect MPLAB SNAP VID #2000
+    - Provide 8.1 Release candidate #2009
+    - Add pickit4_dw and snap_mplab_dw programmers #2019
+    - Use bash printf with C locale #2020
+    - Add delay after ISP fuse writes readback #2021
+    - Update from device packs #2023
+    - Enable macOS Python binding build #2025
+    - Add pkg-config as a Linux build dependency #2026
+    - Upload avrdude-gui artifacts for Windows x86_64 MSVC #2031
+    - Rename macOS CI build to arm64 #2033
+    - Fix PDI Bootmem write #2034
+    - Disable MSys2 Windows Python Binding in CI #2036
+
+  * Internals:
+
+    - New concept of autogenerated files (urboot:)
+
+Changes in version 8.0:
+
+  * Major changes compared to the previous version:
+
+    - Support of multi-memory .hex/.srec files and memory lists #1828
+    - New terminal disasm command #1842
+    - GUI implementation of avrdude to demonstrate libavrdude #1714
+
+  * New devices supported:
+
+    - AVR16DU14, AVR16DU20, AVR16DU28, AVR16DU32
+    - AVR32DU14, AVR32DU20, AVR32DU28, AVR32DU32
+
+  * New programmers supported:
+
+    - serprog
+    - pickit5_updi
+
+  * New serial adapters supported:
+
+    -  ch342, ch344, ch347, ch9103
+
+  * Issues fixed:
+
     - Avrintel.h missing from installation #1683
     - Use of undeclared identifier 'AVRDUDE_FULL_VERSION' #1706
     - Wrong message level in jtag3_prmsg() #1726
     - Old avrdude_message() can go away #1719
     - avr_{read,write}_mem fail to initialize progress reporting #1718
     - avr*timestamp() oddities #1722
-    - -F option not honored bug #1740
+    - -F option not honoured #1740
     - "jtag2 is not a unique start of a programmer name" #1739
     - Regression: EEPROM issue with official STK500 V1 FW #1713
     - usbasp_write_byte in TPI mode not implemented #1755
     - Remove calls to exit() from libavrdude library #774
+    - cmake enabling LINUXGPIO on ubuntu 20.04 fails #1782
+    - macOS github action failed. #1793
+    - Format mismatch warnings #1799
+    - 0xff optimization when reading #1732
+    - Add support for more AVR-DU parts #1742
+    - Misleading error message: cannot find programmer id #1805
+    - Custom programmer broken in v7.3 #1807
+    - ATtiny11 does not have EEPROM #1812
+    - AVRDUDE fails to return -1 on some write errors #1821
+    - Multi-memory files #1817
+    - Terminal erase command #1833
+    - Bootrow r/w does not work for -c serialupdi #1832
+    - Wrong error message when specifying wrong AVR-Ex part #1813
+    - AVR109 auto reset functionality #1697
+    - Unable to write LOCK bit byte to JTAG3_TPI #1858
+    - Unexpected auto-erase consequences #1861
+    - JTAGICE3 EDBG communication mode relies on hardcoded USBVID #1838
+    - avrdude documentation typo(s) attemps #1852
+    - Conflicting types for op16_is_mnemo: enum/integer #1851
+    - Writing BOOTROW for Curiosity Nano #1868
+    - Should AVRDUDE be run as root? #1860
+    - Auto-build avrdude.pdf from texinfo sources #1847
+    - Poor coverage of (concept) index in documentation #1582
+    - Warnings when build under NetBSD 10 and OpenBSD 7.5 #1904
+    - Add -e for the location of avrdude executable for test8 #1900
+    - Weird AVR family warning on locked AVR-Dx #1894
+    - How is version.texi created with autotools? #1905
 
   * Pull requests:
+
     - Remove 32bit MSYS2 mingw32 and clang32 build #1687
     - Make avrintel.h an internal header file for libavrdude #1686
     - Fix -Wcalloc-transposed-args warning #1680
@@ -59,9 +234,85 @@ Changes since version 7.3:
     - Silence gcc warning when printf format is "" #1754
     - Remove calls to exit() from libavrdude library #1790
     - Include libgpiod-dev in build.yml for Linux builds #1788
+    - linuxgpio: add support for libgpiod v1.4 #1792
+    - Use magic memory tree interface throughout #1795
+    - Silence MacOS compiler warning #1794
+    - Add macOS autotools to github action #1798
+    - Silence compiler warnings #1800
+    - Fix 7 typos in 4 files #1802
+    - Put static variables into context structure #1803
+    - Add new AVRnnDUnn parts #1804
+    - Differentiate cause when programmer isn't found #1806
+    - Prepare for next urboot version #1808
+    - Rename AVRDUDE symbol names ending in _t #1809
+    - Warn when programmer failes to define prog_modes #1810
+    - Add serprog programmer #1801
+    - Remove EEPROM from ATtiny11 avrdude.conf entry #1814
+    - Guard serial_number access in usbhid_open() to avoid segfault #1815
+    - Allow selection of program modes for developer options #1816
+    - Return -1 on write error #1822
+    - Extend elf format for bootrow #1820
+    - Update AUTHORS list #1819
+    - Downgrade out-of-range file input errors on -F #1818
+    - Multi-memory file handling #1828
+    - Add developer options -p*/vcr to explore SW compatibility #1830
+    - Improve chip erase emulation for dryboot/dryrun #1836
+    - Use page erase for UPDI programming #1837
+    - Add fuses, calibration, sernum and tempsense memories #1829
+    - Fix bootrow access for -c serialupdi #1835
+    - Improve signature check for UPDI parts #1840
+    - Improve error handling for avrdude without libserialport #1843
+    - Provide terminal disasm command #1842
+    - Improve auto-reset handling and -x/-E parsing #1844
+    - Remove obsolete SVN $Id$ tags from source files #1850
+    - Update look and feel #1849
+    - Update documentation for -E and -x #1853
+    - Add more WCH USB to serial chips #1855
+    - cmake: LIB_NCURSES also accept pdcurses #1856
+    - Fix byte writes to TPI lockbits for jpag3.c #1859
+    - Refine auto-erase strategy #1862
+    - Provide -P usb:vid:pid for USB hid i/f and allow
+      long -P usb:serno for usblib and hidapi #186
+    - Initialise dryrun flash with realistic random code #1873
+    - Writing BOOTROW for Curiosity Nano #1870
+    - Refine programmer/part/memory compatibility modelling #1869
+    - Provide dev option -c \*/u that shows udev rules #1867
+    - Provide current avrdude.pdf documentation in repo root #1865
+    - doc: Stop building and installing .ps and .dvi #1857
+    - Improve autotools build (part 2/n) #1695
+    - Use correct file locations in the documentation #1637
+    - Deprecate obsolete features and options #1875
+    - Add more hard-coded usbvid/pid to udev rules #1876
+    - Fixes for jtag3 programmers and prep for jtagmkII #1877
+    - SWIG Python wrapper for libavrdude #1714
+    - PICkit 5 support #1863
+    - Make usbproduct available to programmers #1880
+    - Silently skip erasing read-only parts of a memory #1883
+    - Fix ATmega1284/P readsize #1886
+    - Fix addresses for jtag3_pdi boot and apptable #1887
+    - Adapt documentation to new Look and Feel #1892
+    - Adapt tools/test-avrdude script for versatile CI use #1891
+    - Reformat sources #1893
+    - Add to parts, programmers and index in avrdude.pdf #1895 #1902
+    - Fix deprecated types in libavrdude.i #1896
+    - Update build.yml to re-enable Windows on ARM64 MSVC build #1901
+    - Add -e exe option to test8 #1903
+    - Refrain from polling memories other than flash/eeprom #1897
+    - Remove known limitations comment from serprog.c #1906
+    - Improve messaging around locked UPDI parts #1907
+    - Improve Documentation #1908
+    - Silence compiler warnings #1909
+    - Parport build test #1874
+    - CI: test running the built avrdude executable #1888
+    - Add checks for zombie sourcecode problems #1910
+    - Iron out some problems in jtagmkII #1911
 
   * Internals:
 
+    - Created a context structure pointed to by cx, which harbours global
+      and static variables
+    - Made programmers libavrdude ready: remove exit() calls and moved
+      static variables into local struct pdata
 
 Changes in version 7.3:
 
@@ -1422,11 +1673,11 @@ Version 5.7:
 
       - ATXMEGA64A1
       - ATXMEGA192A1
-      -	ATXMEGA256A1
+      - ATXMEGA256A1
       - ATXMEGA64A3
       - ATXMEGA128A3
       - ATXMEGA192A3
-      -	ATXMEGA256A3
+      - ATXMEGA256A3
       - ATXMEGA256A3B
       - ATXMEGA16A4
       - ATXMEGA32A4

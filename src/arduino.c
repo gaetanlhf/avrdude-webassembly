@@ -16,8 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 /*
  * avrdude interface for Arduino programmer
  *
@@ -37,13 +35,50 @@
 #include "stk500.h"
 #include "arduino.h"
 
-/* read signature bytes - arduino version */
+static int arduino_parseextparms(const PROGRAMMER *pgm, const LISTID extparms) {
+  int attempts;
+  int rv = 0;
+  bool help = 0;
+
+  for(LNODEID ln = lfirst(extparms); ln; ln = lnext(ln)) {
+    const char *extended_param = ldata(ln);
+
+    if(sscanf(extended_param, "attempts=%i", &attempts) == 1) {
+      my.retry_attempts = attempts;
+      pmsg_info("setting number of retry attempts to %d\n", attempts);
+      continue;
+    }
+
+    if(str_eq(extended_param, "noautoreset")) {
+      my.autoreset = false;
+      continue;
+    }
+
+    if(str_eq(extended_param, "help")) {
+      help = true;
+      rv = LIBAVRDUDE_EXIT;
+    }
+
+    if(!help) {
+      pmsg_error("invalid extended parameter -x %s\n", extended_param);
+      rv = -1;
+    }
+    msg_error("%s -c %s extended options:\n", progname, pgmid);
+    msg_error("  -x attempts=<n> Specify the number <n> of connection retry attempts\n");
+    msg_error("  -x noautoreset  Don't toggle RTS/DTR lines on port open to prevent a hardware reset\n");
+    msg_error("  -x help         Show this help menu and exit\n");
+    return rv;
+  }
+  return rv;
+}
+
+// Read signature bytes - arduino version
 static int arduino_read_sig_bytes(const PROGRAMMER *pgm, const AVRPART *p, const AVRMEM *m) {
   unsigned char buf[32];
 
-  /* Signature byte reads are always 3 bytes. */
+  // Signature byte reads are always 3 bytes
 
-  if (m->size < 3) {
+  if(m->size < 3) {
     pmsg_error("memsize too small for sig byte read");
     return -1;
   }
@@ -53,17 +88,17 @@ static int arduino_read_sig_bytes(const PROGRAMMER *pgm, const AVRPART *p, const
 
   serial_send(&pgm->fd, buf, 2);
 
-  if (serial_recv(&pgm->fd, buf, 5) < 0)
+  if(serial_recv(&pgm->fd, buf, 5) < 0)
     return -1;
-  if (buf[0] == Resp_STK_NOSYNC) {
+  if(buf[0] == Resp_STK_NOSYNC) {
     pmsg_error("programmer is out of sync\n");
-	return -1;
-  } else if (buf[0] != Resp_STK_INSYNC) {
+    return -1;
+  } else if(buf[0] != Resp_STK_INSYNC) {
     msg_error("\n");
     pmsg_error("protocol expects sync byte 0x%02x but got 0x%02x\n", Resp_STK_INSYNC, buf[0]);
     return -2;
   }
-  if (buf[4] != Resp_STK_OK) {
+  if(buf[4] != Resp_STK_OK) {
     msg_error("\n");
     pmsg_error("protocol expects OK byte 0x%02x but got 0x%02x\n", Resp_STK_OK, buf[4]);
     return -3;
@@ -77,63 +112,64 @@ static int arduino_read_sig_bytes(const PROGRAMMER *pgm, const AVRPART *p, const
 }
 
 static int arduino_open(PROGRAMMER *pgm, const char *port) {
-  union pinfo pinfo;
+  if(pgm->bitclock)
+    pmsg_warning("-c %s does not support adjustable bitclock speed; ignoring -B\n", pgmid);
+
   pgm->port = port;
+  union pinfo pinfo;
   pinfo.serialinfo.baud = pgm->baudrate? pgm->baudrate: 115200;
   pinfo.serialinfo.cflags = SERIAL_8N1;
-  if (serial_open(port, pinfo, &pgm->fd)==-1) {
+  if(serial_open(port, pinfo, &pgm->fd) == -1) {
     return -1;
   }
 
-  // This code assumes a negative-logic USB to TTL serial adapter
-  // Set RTS/DTR high to discharge the series-capacitor, if present
-  serial_set_dtr_rts(&pgm->fd, 0);
-  /*
-   * Long wait needed for optiboot: otherwise the second of two bootloader
-   * calls in quick succession fails:
-   *
-   * avrdude -c arduino -qqp m328p -U x.hex; avrdude -c arduino -qqp m328p -U x.hex
-   */
-  usleep(250 * 1000);
-  // Pull the RTS/DTR line low to reset AVR
-  serial_set_dtr_rts(&pgm->fd, 1);
-  // Max 100 us: charging a cap longer creates a high reset spike above Vcc
-  usleep(100);
-  // Set the RTS/DTR line back to high, so direct connection to reset works
-  serial_set_dtr_rts(&pgm->fd, 0);
+  if(my.autoreset) {
+    // This code assumes a negative-logic USB to TTL serial adapter
+    // Set RTS/DTR high to discharge the series-capacitor, if present
+    serial_set_dtr_rts(&pgm->fd, 0);
+    /*
+     * Long wait needed for optiboot: otherwise the second of two bootloader
+     * calls in quick succession fails:
+     *
+     * avrdude -c arduino -qqp m328p -U x.hex; avrdude -c arduino -qqp m328p -U x.hex
+     */
+    usleep(250*1000);
+    // Pull the RTS/DTR line low to reset AVR
+    serial_set_dtr_rts(&pgm->fd, 1);
+    // Max 100 us: charging a cap longer creates a high reset spike above Vcc
+    usleep(100);
+    // Set the RTS/DTR line back to high, so direct connection to reset works
+    serial_set_dtr_rts(&pgm->fd, 0);
 
-  usleep(100 * 1000);
-
-  /*
-   * drain any extraneous input
-   */
+    usleep(100*1000);
+  }
+  // Drain any extraneous input
   stk500_drain(pgm, 0);
 
-  if (stk500_getsync(pgm) < 0)
+  if(stk500_getsync(pgm) < 0)
     return -1;
 
   return 0;
 }
 
-static void arduino_close(PROGRAMMER * pgm)
-{
+static void arduino_close(PROGRAMMER *pgm) {
   serial_close(&pgm->fd);
   pgm->fd.ifd = -1;
 }
 
-const char arduino_desc[] = "Arduino programmer";
+const char arduino_desc[] = "Arduino programmer for bootloading";
 
 void arduino_initpgm(PROGRAMMER *pgm) {
   /* This is mostly a STK500; just the signature is read
-     differently than on real STK500v1 
+     differently than on real STK500v1
      and the DTR signal is set when opening the serial port
      for the Auto-Reset feature */
   stk500_initpgm(pgm);
-
   strcpy(pgm->type, "Arduino");
   pgm->read_sig_bytes = arduino_read_sig_bytes;
   pgm->open = arduino_open;
   pgm->close = arduino_close;
+  pgm->parseextparams = arduino_parseextparms;
 
-  disable_trailing_ff_removal(); /* so that arduino bootloader can ignore chip erase */
+  cx->avr_disableffopt = 1;     // Disable trailing 0xff removal
 }

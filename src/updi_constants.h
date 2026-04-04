@@ -1,6 +1,6 @@
 /*
  * avrdude - A Downloader/Uploader for AVR device programmers
- * Copyright (C) 2021  Dawid Buchwald
+ * Copyright (C) 2021 Dawid Buchwald
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
-/* $Id$ */
 
 /*
  * Based on pymcuprog
@@ -67,9 +65,9 @@
 #define UPDI_PHY_SYNC    0x55
 #define UPDI_PHY_ACK     0x40
 
-#define UPDI_MAX_REPEAT_SIZE (0xFF+1) // Repeat counter of 1-byte, with off-by-one counting
+#define UPDI_MAX_REPEAT_SIZE (0xFF+1)   // Repeat counter of 1-byte, with off-by-one counting
 
-//# CS and ASI Register Address map
+// # CS and ASI Register Address map
 #define UPDI_CS_STATUSA     0x00
 #define UPDI_CS_STATUSB     0x01
 #define UPDI_CS_CTRLA       0x02
@@ -106,4 +104,4 @@
 
 #define UPDI_RESET_REQ_VALUE  0x59
 
-#endif /* updi_constants_h */
+#endif

@@ -1,6 +1,6 @@
 /*
  * avrdude - A Downloader/Uploader for AVR device programmers
- * Copyright (C) 2013 Kevin Cuzner <kevin@kevincuner.com>
+ * Copyright (C) 2013 Kevin Cuzner <kevin@kevincuzner.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,12 +24,11 @@
 extern "C" {
 #endif
 
-extern const char linuxspi_desc[];
-void linuxspi_initpgm(PROGRAMMER *pgm);
+  extern const char linuxspi_desc[];
+  void linuxspi_initpgm(PROGRAMMER *pgm);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //linuxspi_h
-
+#endif

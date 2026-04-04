@@ -1,6 +1,6 @@
 /*
  * avrdude - A Downloader/Uploader for AVR device programmers
- * Copyright (C) 2000-2004  Brian S. Dean <bsd@bdmicro.com>
+ * Copyright (C) 2000-2004 Brian S. Dean <bsd@bdmicro.com>
  * Copyright (C) 2022 Stefan Rueger <stefan.rueger@urclocks.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,8 +17,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 #include <ac_cfg.h>
 
 #include <errno.h>
@@ -28,6 +26,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <ctype.h>
+#include <wchar.h>
 
 #include "avrdude.h"
 #include "libavrdude.h"
@@ -46,27 +45,27 @@ double default_bitclock;
 char const *default_linuxgpio;
 int allow_subshells;
 
-LISTID       string_list;
-LISTID       number_list;
-PROGRAMMER * current_prog;
-AVRPART    * current_part;
-AVRMEM     * current_mem;
-int          current_strct;
-LISTID       part_list;
-LISTID       programmers;
-bool         is_alias;
+LISTID string_list;
+LISTID number_list;
+PROGRAMMER *current_prog;
+AVRPART *current_part;
+AVRMEM *current_mem;
+int current_strct;
+LISTID part_list;
+LISTID programmers;
+bool is_alias;
 
-int    cfg_lineno;
-char * cfg_infile;
+int cfg_lineno;
+char *cfg_infile;
 
-extern char * yytext;
+extern char *yytext;
 
 #define pgm_comp_desc(x, type)  { #x, COMP_PROGRAMMER, offsetof(PROGRAMMER, x), sizeof(((PROGRAMMER *) NULL)->x), type }
 #define part_comp_desc(x, type) { #x, COMP_AVRPART, offsetof(AVRPART, x), sizeof(((AVRPART *) NULL)->x), type }
 #define mem_comp_desc(x, type)  { #x, COMP_AVRMEM, offsetof(AVRMEM, x), sizeof(((AVRMEM *) NULL)->x), type }
 
 // Component description for config_gram.y, will be sorted appropriately on first use
-Component_t avr_comp[] = {
+Component avr_comp[] = {
   // PROGRAMMER
   pgm_comp_desc(desc, COMP_STRING),
   pgm_comp_desc(prog_modes, COMP_INT),
@@ -84,6 +83,7 @@ Component_t avr_comp[] = {
   part_comp_desc(family_id, COMP_STRING),
   part_comp_desc(prog_modes, COMP_INT),
   part_comp_desc(mcuid, COMP_INT),
+  part_comp_desc(archnum, COMP_INT),
   part_comp_desc(n_interrupts, COMP_INT),
   part_comp_desc(n_page_erase, COMP_INT),
   part_comp_desc(n_boot_sections, COMP_INT),
@@ -106,7 +106,7 @@ Component_t avr_comp[] = {
   part_comp_desc(postdelay, COMP_INT),
   part_comp_desc(pollmethod, COMP_INT),
 
-  part_comp_desc(hventerstabdelay, COMP_INT), // STK500 v2 hv mode parameters
+  part_comp_desc(hventerstabdelay, COMP_INT),   // STK500 v2 hv mode parameters
   part_comp_desc(progmodedelay, COMP_INT),
   part_comp_desc(latchcycles, COMP_INT),
   part_comp_desc(togglevtg, COMP_INT),
@@ -149,8 +149,8 @@ Component_t avr_comp[] = {
   mem_comp_desc(min_write_delay, COMP_INT),
   mem_comp_desc(max_write_delay, COMP_INT),
   mem_comp_desc(pwroff_after_write, COMP_INT),
-  {"readback_p1", COMP_AVRMEM, offsetof(AVRMEM, readback)+0, 1, COMP_CHAR },
-  {"readback_p2", COMP_AVRMEM, offsetof(AVRMEM, readback)+1, 1, COMP_CHAR },
+  {"readback_p1", COMP_AVRMEM, offsetof(AVRMEM, readback) + 0, 1, COMP_CHAR},
+  {"readback_p2", COMP_AVRMEM, offsetof(AVRMEM, readback) + 1, 1, COMP_CHAR},
   mem_comp_desc(mode, COMP_INT),
   mem_comp_desc(delay, COMP_INT),
   mem_comp_desc(pollindex, COMP_INT),
@@ -160,36 +160,34 @@ Component_t avr_comp[] = {
 
 #define DEBUG 0
 
-void cleanup_config(void)
-{
-  ldestroy_cb(part_list, (void(*)(void*))avr_free_part);
-  ldestroy_cb(programmers, (void(*)(void*))pgm_free);
-  ldestroy_cb(string_list, (void(*)(void*))free_token);
-  ldestroy_cb(number_list, (void(*)(void*))free_token);
+void cleanup_config(void) {
+  ldestroy_cb(part_list, (void (*)(void *)) avr_free_part);
+  ldestroy_cb(programmers, (void (*)(void *)) pgm_free);
+  ldestroy_cb(string_list, (void (*)(void *)) free_token);
+  ldestroy_cb(number_list, (void (*)(void *)) free_token);
 }
 
-int init_config(void)
-{
-  string_list  = lcreat(NULL, 0);
-  number_list  = lcreat(NULL, 0);
+int init_config(void) {
+  string_list = lcreat(NULL, 0);
+  number_list = lcreat(NULL, 0);
   current_prog = NULL;
   current_part = NULL;
-  current_mem  = NULL;
-  part_list    = lcreat(NULL, 0);
-  programmers  = lcreat(NULL, 0);
-  is_alias     = false;
+  current_mem = NULL;
+  part_list = lcreat(NULL, 0);
+  programmers = lcreat(NULL, 0);
+  is_alias = false;
 
-  cfg_lineno   = 1;
-  cfg_infile   = NULL;
+  cfg_lineno = 1;
+  cfg_infile = NULL;
 
   return 0;
 }
 
 void *cfg_malloc(const char *funcname, size_t n) {
   void *ret = malloc(n);
+
   if(!ret) {
-    pmsg_error("out of memory in %s() for malloc(); needed %lu bytes\n",
-      funcname, (unsigned long) n);
+    pmsg_error("out of memory in %s() for malloc(); needed %lu bytes\n", funcname, (unsigned long) n);
     exit(1);
   }
   memset(ret, 0, n);
@@ -198,17 +196,17 @@ void *cfg_malloc(const char *funcname, size_t n) {
 
 void *cfg_realloc(const char *funcname, void *p, size_t n) {
   void *ret;
+
   if(!(ret = p? realloc(p, n): calloc(1, n))) {
-    pmsg_error("out of memory in %s() for %salloc(); needed %lu bytes\n",
-      funcname, p? "re": "c", (unsigned long) n);
+    pmsg_error("out of memory in %s() for %salloc(); needed %lu bytes\n", funcname, p? "re": "c", (unsigned long) n);
     exit(1);
   }
   return ret;
 }
 
-
 char *cfg_strdup(const char *funcname, const char *s) {
   char *ret = strdup(s);
+
   if(!ret) {
     pmsg_error("out of memory in %s() for strdup()\n", funcname);
     exit(1);
@@ -216,20 +214,15 @@ char *cfg_strdup(const char *funcname, const char *s) {
   return ret;
 }
 
-
-void cfg_free(void *ptr) {
+void mmt_f_free(void *ptr) {
   mmt_free(ptr);
 }
 
-
-int yywrap()
-{
+int yywrap() {
   return 1;
 }
 
-
-int yyerror(char * errmsg, ...)
-{
+int yyerror(char *errmsg, ...) {
   va_list args;
 
   char message[512];
@@ -244,9 +237,7 @@ int yyerror(char * errmsg, ...)
   return 0;
 }
 
-
-int yywarning(char * errmsg, ...)
-{
+int yywarning(char *errmsg, ...) {
   va_list args;
 
   char message[512];
@@ -261,49 +252,44 @@ int yywarning(char * errmsg, ...)
   return 0;
 }
 
+TOKEN *new_token(int primary) {
+  TOKEN *tkn = (TOKEN *) mmt_malloc(sizeof(TOKEN));
 
-TOKEN * new_token(int primary) {
-  TOKEN * tkn = (TOKEN *) cfg_malloc("new_token()", sizeof(TOKEN));
   tkn->primary = primary;
   return tkn;
 }
 
-
-void free_token(TOKEN * tkn)
-{
-  if (tkn) {
-    switch (tkn->value.type) {
-      case V_STR:
-        if (tkn->value.string)
-          free(tkn->value.string);
-        tkn->value.string = NULL;
-        break;
+void free_token(TOKEN *tkn) {
+  if(tkn) {
+    switch(tkn->value.type) {
+    case V_STR:
+      if(tkn->value.string)
+        mmt_free(tkn->value.string);
+      tkn->value.string = NULL;
+      break;
     }
 
-    free(tkn);
+    mmt_free(tkn);
   }
 }
 
-
-void free_tokens(int n, ...)
-{
-  TOKEN * t;
+void free_tokens(int n, ...) {
+  TOKEN *t;
   va_list ap;
 
   va_start(ap, n);
-  while (n--) {
+  while(n--) {
     t = va_arg(ap, TOKEN *);
     free_token(t);
   }
   va_end(ap);
 }
 
-
-
 TOKEN *new_number(const char *text) {
   const char *errstr;
-  struct token_t *tkn = new_token(TKN_NUMBER);
-  tkn->value.type   = V_NUM;
+  TOKEN *tkn = new_token(TKN_NUMBER);
+
+  tkn->value.type = V_NUM;
   tkn->value.number = str_int(text, STR_INT32, &errstr);
   if(errstr) {
     yyerror("integer %s in config file: %s", text, errstr);
@@ -312,7 +298,7 @@ TOKEN *new_number(const char *text) {
   }
 
 #if DEBUG
-  msg_info("NUMBER(%d)\n", tkn->value.number);
+  msg_notice("NUMBER(%d)\n", tkn->value.number);
 #endif
 
   return tkn;
@@ -320,8 +306,9 @@ TOKEN *new_number(const char *text) {
 
 TOKEN *new_number_real(const char *text) {
   char *endptr;
-  struct token_t * tkn = new_token(TKN_NUMBER);
-  tkn->value.type   = V_NUM_REAL;
+  TOKEN *tkn = new_token(TKN_NUMBER);
+
+  tkn->value.type = V_NUM_REAL;
   tkn->value.number_real = strtod(text, &endptr);
   if(endptr == text || *endptr) {
     yyerror("real number in config file %s: parsing error", text);
@@ -330,14 +317,14 @@ TOKEN *new_number_real(const char *text) {
   }
 
 #if DEBUG
-  msg_info("NUMBER(%g)\n", tkn->value.number_real);
+  msg_notice("NUMBER(%g)\n", tkn->value.number_real);
 #endif
 
   return tkn;
 }
 
 TOKEN *new_constant(const char *con) {
-  struct token_t *tkn = new_token(TKN_NUMBER);
+  TOKEN *tkn = new_token(TKN_NUMBER);
   int assigned = 1;
 
   tkn->value.type = V_NUM;
@@ -361,10 +348,9 @@ TOKEN *new_constant(const char *con) {
     str_eq(con, "HAS_VTARG_READ")? HAS_VTARG_READ:
     str_eq(con, "HAS_FOSC_ADJ")? HAS_FOSC_ADJ:
     str_eq(con, "HAS_VAREF_ADJ")? HAS_VAREF_ADJ:
+    str_eq(con, "HAS_BITCLOCK_ADJ")? HAS_BITCLOCK_ADJ:
     str_eq(con, "pseudo")? 2:
-    str_eq(con, "yes") || str_eq(con, "true")? 1:
-    str_eq(con, "no") || str_eq(con, "false")? 0:
-    (assigned = 0);
+    str_eq(con, "yes") || str_eq(con, "true")? 1: str_eq(con, "no") || str_eq(con, "false")? 0: (assigned = 0);
 
   if(!assigned) {
     yyerror("can't identify constant %s", con);
@@ -373,74 +359,70 @@ TOKEN *new_constant(const char *con) {
   }
 
 #if DEBUG
-  msg_info("CONSTANT(%s=%d)\n", con, tkn->value.number);
+  msg_notice("CONSTANT(%s=%d)\n", con, tkn->value.number);
 #endif
 
   return tkn;
 }
 
 TOKEN *new_string(const char *text) {
-  struct token_t *tkn = new_token(TKN_STRING);
-  tkn->value.type   = V_STR;
-  tkn->value.string = cfg_strdup("new_string()", text);
+  TOKEN *tkn = new_token(TKN_STRING);
+
+  tkn->value.type = V_STR;
+  tkn->value.string = mmt_strdup(text);
 
 #if DEBUG
-  msg_info("STRING(%s)\n", tkn->value.string);
+  msg_notice("STRING(%s)\n", tkn->value.string);
 #endif
 
   return tkn;
 }
 
-
 TOKEN *new_keyword(int primary) {
   return new_token(primary);
 }
 
-
-void print_token(TOKEN * tkn)
-{
-  if (!tkn)
+void print_token(TOKEN *tkn) {
+  if(!tkn)
     return;
 
   msg_info("token = %d = ", tkn->primary);
-  switch (tkn->value.type) {
-    case V_NUM:
-      msg_info("NUMBER, value=%d", tkn->value.number);
-      break;
+  switch(tkn->value.type) {
+  case V_NUM:
+    msg_info("NUMBER, value=%d", tkn->value.number);
+    break;
 
-    case V_NUM_REAL:
-      msg_info("NUMBER, value=%g", tkn->value.number_real);
-      break;
+  case V_NUM_REAL:
+    msg_info("NUMBER, value=%g", tkn->value.number_real);
+    break;
 
-    case V_STR:
-      msg_info("STRING, value=%s", tkn->value.string);
-      break;
+  case V_STR:
+    msg_info("STRING, value=%s", tkn->value.string);
+    break;
 
-    default:
-      msg_info("<other>");
-      break;
+  default:
+    msg_info("<other>");
+    break;
   }
 
   msg_info("\n");
 }
 
+void pyytext(void) {
 
-void pyytext(void)
-{
 #if DEBUG
-  msg_info("TOKEN: %s\n", yytext);
+  msg_notice("TOKEN: %s\n", yytext);
 #endif
 }
 
-
 #ifdef HAVE_YYLEX_DESTROY
-/* reset lexer and free any allocated memory */
+
+// Reset lexer and free any allocated memory
 extern int yylex_destroy(void);
 #endif
 
-int read_config(const char * file)
-{
-  FILE * f;
+int read_config(const char *file) {
+  FILE *f;
   int r;
 
   if(!(cfg_infile = realpath(file, NULL))) {
@@ -449,33 +431,32 @@ int read_config(const char * file)
   }
 
   f = fopen(cfg_infile, "r");
-  if (f == NULL) {
+  if(f == NULL) {
     pmsg_ext_error("cannot open config file %s: %s\n", cfg_infile, strerror(errno));
-    free(cfg_infile);
+    mmt_free(cfg_infile);
     cfg_infile = NULL;
     return -1;
   }
 
   cfg_lineno = 1;
-  yyin   = f;
+  yyin = f;
 
   r = yyparse();
 
 #ifdef HAVE_YYLEX_DESTROY
-  /* reset lexer and free any allocated memory */
+  // Reset lexer and free any allocated memory
   yylex_destroy();
 #endif
 
   fclose(f);
 
   if(cfg_infile) {
-    free(cfg_infile);
+    mmt_free(cfg_infile);
     cfg_infile = NULL;
   }
 
   return r;
 }
-
 
 // Adapted version of a neat empirical hash function from comp.lang.c by Daniel Bernstein
 unsigned strhash(const char *str) {
@@ -487,9 +468,6 @@ unsigned strhash(const char *str) {
   return hash;
 }
 
-
-static char **hstrings[1<<12];
-
 // Return a copy of the argument as hashed string
 const char *cache_string(const char *p) {
   int h, k;
@@ -498,36 +476,27 @@ const char *cache_string(const char *p) {
   if(!p)
     p = "(NULL)";
 
-  h = strhash(p) % (sizeof hstrings/sizeof*hstrings);
-  if(!(hs=hstrings[h]))
-    hs = hstrings[h] = (char **) cfg_realloc("cache_string()", NULL, (16+1)*sizeof**hstrings);
+  h = strhash(p)%(sizeof cx->cfg_hstrings/sizeof *cx->cfg_hstrings);
+  if(!(hs = cx->cfg_hstrings[h]))
+    hs = cx->cfg_hstrings[h] = (char **) mmt_realloc(NULL, (16 + 1)*sizeof **cx->cfg_hstrings);
 
-  for(k=0; hs[k]; k++)
+  for(k = 0; hs[k]; k++)
     if(*p == *hs[k] && str_eq(p, hs[k]))
       return hs[k];
 
   if(k && k%16 == 0)
-    hstrings[h] = (char **) cfg_realloc("cache_string()", hstrings[h], (k+16+1)*sizeof**hstrings);
+    cx->cfg_hstrings[h] = (char **) mmt_realloc(cx->cfg_hstrings[h], (k + 16 + 1)*sizeof **cx->cfg_hstrings);
 
-  hstrings[h][k+1]=NULL;
+  cx->cfg_hstrings[h][k + 1] = NULL;
 
-  return hstrings[h][k] = cfg_strdup("cache_string()", p);
+  return cx->cfg_hstrings[h][k] = mmt_strdup(p);
 }
-
-
-static LISTID cfg_comms;        // A chain of comment lines
-static LISTID cfg_prologue;     // Comment lines at start of avrdude.conf
-static char *lkw;               // Last seen keyword
-static int lkw_lineno;          // Line number of that
-
-static LISTID cfg_strctcomms;   // Passed on to config_gram.y
-static LISTID cfg_pushedcomms;  // Temporarily pushed main comments
-static int cfg_pushed;          // ... for memory sections
 
 COMMENT *locate_comment(const LISTID comments, const char *where, int rhs) {
   if(comments)
-    for(LNODEID ln=lfirst(comments); ln; ln=lnext(ln)) {
+    for(LNODEID ln = lfirst(comments); ln; ln = lnext(ln)) {
       COMMENT *n = ldata(ln);
+
       if(n && rhs == n->rhs && n->kw && str_eq(where, n->kw))
         return n;
     }
@@ -536,57 +505,58 @@ COMMENT *locate_comment(const LISTID comments, const char *where, int rhs) {
 }
 
 static void addcomment(int rhs) {
-  if(lkw) {
-    COMMENT *node = cfg_malloc("addcomment()", sizeof(*node));
+  if(cx->cfg_lkw) {
+    COMMENT *node = mmt_malloc(sizeof(*node));
+
     node->rhs = rhs;
-    node->kw = cfg_strdup("addcomment()", lkw);
-    node->comms = cfg_comms;
-    cfg_comms = NULL;
-    if(!cfg_strctcomms)
-      cfg_strctcomms = lcreat(NULL, 0);
-    ladd(cfg_strctcomms, node);
+    node->kw = mmt_strdup(cx->cfg_lkw);
+    node->comms = cx->cfg_comms;
+    cx->cfg_comms = NULL;
+    if(!cx->cfg_strctcomms)
+      cx->cfg_strctcomms = lcreat(NULL, 0);
+    ladd(cx->cfg_strctcomms, node);
   }
 }
 
 // Capture prologue during parsing (triggered by lexer.l)
 void cfg_capture_prologue(void) {
-  cfg_prologue = cfg_comms;
-  cfg_comms = NULL;
+  cx->cfg_prologue = cx->cfg_comms;
+  cx->cfg_comms = NULL;
 }
 
 LISTID cfg_get_prologue(void) {
-  return cfg_prologue;
+  return cx->cfg_prologue;
 }
 
 // Captures comments during parsing
 void capture_comment_str(const char *com, int lineno) {
-  if(!cfg_comms)
-    cfg_comms = lcreat(NULL, 0);
-  ladd(cfg_comms, cfg_strdup("capture_comment_str()", com));
+  if(!cx->cfg_comms)
+    cx->cfg_comms = lcreat(NULL, 0);
+  ladd(cx->cfg_comms, mmt_strdup(com));
 
   // Last keyword lineno is the same as this comment's
-  if(lkw && lkw_lineno == lineno)
+  if(cx->cfg_lkw && cx->cfg_lkw_lineno == lineno)
     addcomment(1);              // Register comms to show right of lkw = ...;
 }
 
 // Capture assignments (keywords left of =) and associate comments to them
 void capture_lvalue_kw(const char *kw, int lineno) {
   if(str_eq(kw, "memory")) {    // Push part comments and start memory comments
-    if(!cfg_pushed) {           // config_gram.y pops the part comments
-      cfg_pushed = 1;
-      cfg_pushedcomms = cfg_strctcomms;
-      cfg_strctcomms = NULL;
+    if(!cx->cfg_pushed) {       // config_gram.y pops the part comments
+      cx->cfg_pushed = 1;
+      cx->cfg_pushedcomms = cx->cfg_strctcomms;
+      cx->cfg_strctcomms = NULL;
     }
   }
 
   if(str_eq(kw, "programmer") || str_eq(kw, "serialadapter") || str_eq(kw, "part") || str_eq(kw, "memory"))
     kw = "*";                   // Show comment before programmer/part/memory
 
-  if(lkw)
-    free(lkw);
-  lkw = cfg_strdup("capture_lvalue_kw()", kw);
-  lkw_lineno = lineno;
-  if(cfg_comms)                 // Accrued list of # one-line comments
+  if(cx->cfg_lkw)
+    mmt_free(cx->cfg_lkw);
+  cx->cfg_lkw = mmt_strdup(kw);
+  cx->cfg_lkw_lineno = lineno;
+  if(cx->cfg_comms)             // Accrued list of # one-line comments
     addcomment(0);              // Register comment to appear before lkw assignment
 }
 
@@ -594,16 +564,17 @@ void capture_lvalue_kw(const char *kw, int lineno) {
 LISTID cfg_move_comments(void) {
   capture_lvalue_kw(";", -1);
 
-  LISTID ret = cfg_strctcomms;
-  cfg_strctcomms = NULL;
+  LISTID ret = cx->cfg_strctcomms;
+
+  cx->cfg_strctcomms = NULL;
   return ret;
 }
 
 // config_gram.y calls this after ingressing the memory structure
 void cfg_pop_comms(void) {
-  if(cfg_pushed) {
-    cfg_pushed = 0;
-    cfg_strctcomms = cfg_pushedcomms;
+  if(cx->cfg_pushed) {
+    cx->cfg_pushed = 0;
+    cx->cfg_strctcomms = cx->cfg_pushedcomms;
   }
 }
 
@@ -623,8 +594,8 @@ static unsigned int tohex(const unsigned char *s, unsigned int n) {
 
 /*
  * Create a utf-8 character sequence from a single unicode character.
- * Permissive for some invalid unicode sequences but not for those with
- * high bit set). Returns numbers of characters written (0-6).
+ * Permissive for some invalid unicode sequences but not for those with high
+ * bit set). Returns numbers of characters written (0-6).
  */
 static int wc_to_utf8str(unsigned int wc, unsigned char *str) {
   if(!(wc & ~0x7fu)) {
@@ -669,19 +640,25 @@ static int wc_to_utf8str(unsigned int wc, unsigned char *str) {
   return 0;
 }
 
-// Unescape C-style strings, destination d must hold enough space (and can be source s)
-unsigned char *cfg_unescapeu(unsigned char *d, const unsigned char *s) {
-  unsigned char *ret = d;
+/*
+ * Unescape C-style strings, destination d must hold enough space (and can be source s).
+ * Returns the number of characters in destination *excluding* the terminating 0 from s.
+ * The destination can hold nul characters owing to, eg, \x00 or \000 escape sequences.
+ */
+size_t cfg_unescapen(unsigned char *d, const unsigned char *s) {
+  unsigned char *dstart = d;
   int n, k;
 
   while(*s) {
-    switch (*s) {
+    switch(*s) {
     case '\\':
-      switch (*++s) {
-      case '\n':                // String continuation over new line
+      switch(*++s) {
+      case '\n':               // String continuation over new line
+
 #if '\n' != '\r'
       case '\r':
 #endif
+
         --d;
         break;
       case 'n':
@@ -696,7 +673,7 @@ unsigned char *cfg_unescapeu(unsigned char *d, const unsigned char *s) {
       case 'b':
         *d = '\b';
         break;
-      case 'e':                 // Non-standard ESC
+      case 'e':                // Non-standard ESC
         *d = 27;
         break;
       case 'f':
@@ -730,13 +707,13 @@ unsigned char *cfg_unescapeu(unsigned char *d, const unsigned char *s) {
       case '4':
       case '5':
       case '6':
-      case '7':                 // 1-3 octal digits
+      case '7':                // 1-3 octal digits
         n = *s - '0';
-        for(k = 0; k < 2 && s[1] >= '0' && s[1] <= '7'; k++)  // Max 2 more octal characters
+        for(k = 0; k < 2 && s[1] >= '0' && s[1] <= '7'; k++)    // Max 2 more octal characters
           n *= 8, n += s[1] - '0', s++;
         *d = n;
         break;
-      case 'x':                 // Unlimited hex digits
+      case 'x':                // Unlimited hex digits
         for(k = 0; isxdigit(s[k + 1]); k++)
           continue;
         if(k > 0) {
@@ -747,9 +724,10 @@ unsigned char *cfg_unescapeu(unsigned char *d, const unsigned char *s) {
           *d = 'x';
         }
         break;
-      case 'u':                 // Exactly 4 hex digits and valid unicode
+      case 'u':                // Exactly 4 hex digits and valid unicode
         if(isxdigit(s[1]) && isxdigit(s[2]) && isxdigit(s[3]) && isxdigit(s[4]) &&
-          (n = wc_to_utf8str(tohex(s+1, 4), d))) {
+          (n = wc_to_utf8str(tohex(s + 1, 4), d))) {
+
           d += n - 1;
           s += 4;
         } else {                // Invalid \u sequence? copy \u
@@ -757,9 +735,9 @@ unsigned char *cfg_unescapeu(unsigned char *d, const unsigned char *s) {
           *d = 'u';
         }
         break;
-      case 'U':                 // Exactly 6 hex digits and valid unicode
+      case 'U':                // Exactly 6 hex digits and valid unicode
         if(isxdigit(s[1]) && isxdigit(s[2]) && isxdigit(s[3]) && isxdigit(s[4]) && isxdigit(s[5]) && isxdigit(s[6]) &&
-          (n = wc_to_utf8str(tohex(s+1, 6), d))) {
+          (n = wc_to_utf8str(tohex(s + 1, 6), d))) {
           d += n - 1;
           s += 6;
         } else {                // Invalid \U sequence? copy \U
@@ -767,13 +745,13 @@ unsigned char *cfg_unescapeu(unsigned char *d, const unsigned char *s) {
           *d = 'U';
         }
         break;
-      default:                  // Keep the escape sequence (C would warn and remove \)
+      default:                 // Keep the escape sequence (C would warn and remove \)
         *d++ = '\\';
         *d = *s;
       }
       break;
 
-    default:                    // Not an escape sequence: just copy the character
+    default:                   // Not an escape sequence: just copy the character
       *d = *s;
     }
     d++;
@@ -781,7 +759,13 @@ unsigned char *cfg_unescapeu(unsigned char *d, const unsigned char *s) {
   }
   *d = *s;                      // Terminate
 
-  return ret;
+  return d - dstart;
+}
+
+// Unescape C-style strings, destination d must hold enough space (and can be source s)
+unsigned char *cfg_unescapeu(unsigned char *d, const unsigned char *s) {
+  (void) cfg_unescapen(d, s);
+  return d;
 }
 
 // Unescape C-style strings, destination d must hold enough space (and can be source s)
@@ -789,116 +773,259 @@ char *cfg_unescape(char *d, const char *s) {
   return (char *) cfg_unescapeu((unsigned char *) d, (const unsigned char *) s);
 }
 
-// Return an escaped string that looks like a C-style input string incl quotes, memory is malloc'd
-char *cfg_escape(const char *s) {
-  char buf[50*1024], *d = buf;
+// Returns the number of characters that a unicode character would need (0-6)
+static int utf8width(wint_t wc) {
+  if(!(wc & ~0x7fu))
+    return 1;
+  if(!(wc & ~0x7ffu))
+    return 2;
+  if(!(wc & ~0xffffu))
+    return 3;
+  if(!(wc & ~0x1fffffu))
+    return 4;
+  if(!(wc & ~0x3ffffffu))
+    return 5;
+  if(!(wc & ~0x7fffffffu))
+    return 6;
+  return 0;
+}
+
+// Given the first byte c of a character sequence, how long is the sequence going to be?
+static int utf8headlen(int c) {
+  return
+    (c & 0xe0) == 0xc0? 2:
+    (c & 0xf0) == 0xe0? 3:
+    (c & 0xf8) == 0xf0? 4:
+    (c & 0xfc) == 0xf8? 5:
+    (c & 0xfe) == 0xfc? 6: 1 /* not UTF-8 header */;
+}
+
+/*
+ * Return the next unicode character from a utf-8 string str with at least n
+ * characters and record the length of the utf-8 string eaten in *lenp. Returns
+ * U+FFFD (illegal char) if parsing does not go well
+*/
+
+static wint_t nextutf8char(const char *str, int n, int *lenp) {
+  int j, utf8, len;
+  wint_t c, wc = 0;
+
+  c = str[0] & 0xff;
+  if(!(c & 0x80)) {             // Simple ASCII - all done
+    if(lenp)
+      *lenp = 1;
+    return c;
+  }
+
+  utf8 = 0;                     // Possible UTF-8 character, convert to wint_t
+  len = utf8headlen((int) c);
+  if(len > 1 && len <= n) {
+    switch(len) {
+    case 2:
+      wc = c & 0x1f;
+      break;
+    case 3:
+      wc = c & 0xf;
+      break;
+    case 4:
+      wc = c & 0x7;
+      break;
+    case 5:
+      wc = c & 0x3;
+      break;
+    case 6:
+      wc = c & 0x1;
+      break;
+    }
+    for(utf8 = 1, j = 1; j < len; j++) {
+      if((str[j] & 0xc0) != 0x80) {
+        utf8 = 0;
+        break;
+      }
+      wc = (wc << 6) + (str[j] & 0x3f);
+    }
+  }
+  if(utf8 && utf8width(wc) != len)      // Sequence code was longer than needed be, make invalid
+    utf8 = 0;
+
+  if(!utf8)
+    len = 1, wc = 0xFFFD;       // Illegal character
+
+  if(lenp)
+    *lenp = len;
+
+  return wc;
+}
+
+// Escape n characters of s and return a mmt_malloc'd  C-style input string incl quotes
+char *cfg_escapen(const char *s, size_t n) {
+  if(n > (SIZE_MAX - 3 - 16)/4) // Sanity
+    n = (SIZE_MAX - 3 - 16)/4;
+
+  size_t blen = n*4 + 3;        // Worst case: n octals \ooo plus two quotes plus terminating nul
+  char *buf = mmt_malloc(blen + 16), *d = buf, temp[64];
+  memset(buf + blen, 0xff, 16); // End of buffer marker
 
   *d++ = '"';
-  for(; *s && d-buf < (long) sizeof buf-7; s++) {
+  while(n && (*d & 0xff) != 0xff) {
     switch(*s) {
+    case 0:
+      *d++ = '\\';
+      *d++ = '0';
+      // Expand \0 to \000 if followed by UTF-8 chars or digits that *look* like octal digits
+      if(n > 1 && ((s[1] & 0x80) || (s[1] >= '0' && s[1] <= '9')))
+        *d++ = '0', *d++ = '0';
+      break;
     case '\n':
-      *d++ = '\\'; *d++ = 'n';
+      *d++ = '\\';
+      *d++ = 'n';
       break;
     case '\t':
-      *d++ = '\\'; *d++ = 't';
+      *d++ = '\\';
+      *d++ = 't';
       break;
     case '\a':
-      *d++ = '\\'; *d++ = 'a';
+      *d++ = '\\';
+      *d++ = 'a';
       break;
     case '\b':
-      *d++ = '\\'; *d++ = 'b';
+      *d++ = '\\';
+      *d++ = 'b';
       break;
     case '\f':
-      *d++ = '\\'; *d++ = 'f';
+      *d++ = '\\';
+      *d++ = 'f';
       break;
+
 #if '\r' != '\n'
     case '\r':
-      *d++ = '\\'; *d++ = 'r';
+      *d++ = '\\';
+      *d++ = 'r';
       break;
 #endif
+
     case '\v':
-      *d++ = '\\'; *d++ = 'v';
+      *d++ = '\\';
+      *d++ = 'v';
       break;
     case '\"':
-      *d++ = '\\'; *d++ = '\"';
+      *d++ = '\\';
+      *d++ = '\"';
       break;
     default:
-      if(*s == 0x7f || (unsigned char) *s < 32) {
-        sprintf(d, "\\%03o", *s);
-        d += strlen(d);
+      if(*s & 0x80) {           // Leave UTF-8 sequences intact
+        int chrlen;
+
+        if(0xFFFD == nextutf8char(s, n, &chrlen)) { // Invalid UTF-8
+          sprintf(temp, "\\%03o", *s & 0xff);
+          memcpy(d, temp, 4);
+          d += 4;
+        } else {                // Copy over valid UTF-8 character
+          memcpy(d, s, chrlen);
+          d += chrlen;
+          chrlen--;             // Compensate for s++ and n-- below
+          s += chrlen;
+          n = n > (size_t) chrlen? n - chrlen: 1;
+        }
+      } else if(*s == 0x7f || (unsigned char) *s < 32) {
+        sprintf(temp, "\\%03o", *s);
+        memcpy(d, temp, 4);
+        d += 4;
       } else
         *d++ = *s;
     }
+    n--;
+    s++;
   }
   *d++ = '"';
   *d = 0;
 
-  return cfg_strdup("cfg_escape()", buf);
+  return buf;
 }
 
+// Return an mmt_malloc'd escaped string that looks like a C-style input string incl quotes
+char *cfg_escape(const char *s) {
+  return cfg_escapen(s, strlen(s));
+}
 
 static int cmp_comp(const void *v1, const void *v2) {
-  const Component_t *c1 = v1, *c2 = v2;
+  const Component *c1 = v1, *c2 = v2;
   int ret = strcmp(c1->name, c2->name);
 
   return ret? ret: c1->strct - c2->strct;
 }
 
-Component_t *cfg_comp_search(const char *name, int strct) {
-  static int init;
-  Component_t key;
+Component *cfg_comp_search(const char *name, int strct) {
+  Component key;
 
-  if(!init++)
-    qsort(avr_comp, sizeof avr_comp/sizeof*avr_comp, sizeof(Component_t), cmp_comp);
-
+  if(!cx->cfg_init_search++)
+    qsort(avr_comp, sizeof avr_comp/sizeof *avr_comp, sizeof(Component), cmp_comp);
 
   key.name = name;
   key.strct = strct;
-  return bsearch(&key, avr_comp, sizeof avr_comp/sizeof*avr_comp, sizeof(Component_t), cmp_comp);
+  return bsearch(&key, avr_comp, sizeof avr_comp/sizeof *avr_comp, sizeof(Component), cmp_comp);
 }
-
 
 const char *cfg_strct_name(int strct) {
   switch(strct) {
-  case COMP_CONFIG_MAIN: return "avrdude.conf main";
-  case COMP_AVRPART: return "AVRPART";
-  case COMP_AVRMEM: return "AVRMEM";
-  case COMP_PROGRAMMER: return "PROGRAMMER";
+  case COMP_CONFIG_MAIN:
+    return "avrdude.conf main";
+  case COMP_AVRPART:
+    return "AVRPART";
+  case COMP_AVRMEM:
+    return "AVRMEM";
+  case COMP_PROGRAMMER:
+    return "PROGRAMMER";
   }
   return "unknown struct";
 }
 
 const char *cfg_v_type(int type) {
   switch(type) {
-  case V_NONE: return "void";
-  case V_NUM: return "number";
-  case V_NUM_REAL: return "real";
-  case V_STR: return "string";
-  case V_COMPONENT: return "component";
+  case V_NONE:
+    return "void";
+  case V_NUM:
+    return "number";
+  case V_NUM_REAL:
+    return "real";
+  case V_STR:
+    return "string";
+  case V_COMPONENT:
+    return "component";
   }
   return "unknown v type";
 }
 
 const char *cfg_comp_type(int type) {
   switch(type) {
-  case COMP_INT: return "number";
-  case COMP_SHORT: return "short";
-  case COMP_CHAR: return "char";
-  case COMP_BOOL: return "bool";
-  case COMP_STRING: return "string";
-  case COMP_CHAR_ARRAY: return "byte array";
-  case COMP_INT_LISTID: return "number list";
-  case COMP_STRING_LISTID: return "string list";
-  case COMP_OPCODE: return "opcode";
-  case COMP_PIN: return "pin";
-  case COMP_PIN_LIST: return "pin list";
+  case COMP_INT:
+    return "number";
+  case COMP_SHORT:
+    return "short";
+  case COMP_CHAR:
+    return "char";
+  case COMP_BOOL:
+    return "bool";
+  case COMP_STRING:
+    return "string";
+  case COMP_CHAR_ARRAY:
+    return "byte array";
+  case COMP_INT_LISTID:
+    return "number list";
+  case COMP_STRING_LISTID:
+    return "string list";
+  case COMP_OPCODE:
+    return "opcode";
+  case COMP_PIN:
+    return "pin";
+  case COMP_PIN_LIST:
+    return "pin list";
   }
   return "unknown comp type";
 }
 
-
 // Used by config_gram.y to assign a component in one of the relevant structures with a value
-void cfg_assign(char *sp, int strct, Component_t *cp, VALUE *v) {
+void cfg_assign(char *sp, int strct, Component *cp, VALUE *v) {
   const char *str;
   int num;
 
@@ -912,9 +1039,9 @@ void cfg_assign(char *sp, int strct, Component_t *cp, VALUE *v) {
         cp->name, cfg_strct_name(strct), cfg_comp_type(cp->type), cfg_v_type(v->type));
       return;
     }
-    // TODO: consider endianess (code currently assumes little endian)
+    // TODO: consider endianness (code currently assumes little endian)
     num = v->number;
-    memcpy(sp+cp->offset, &num, cp->size);
+    memcpy(sp + cp->offset, &num, cp->size);
     break;
   case COMP_STRING:
     if(v->type != V_STR) {
@@ -923,9 +1050,9 @@ void cfg_assign(char *sp, int strct, Component_t *cp, VALUE *v) {
       return;
     }
     str = cache_string(v->string);
-    memcpy(sp+cp->offset, &str, cp->size);
+    memcpy(sp + cp->offset, &str, cp->size);
     break;
-  // TODO: implement COMP_CHAR_ARRAY, COMP_INT_LISTID, COMP_STRING_LISTID, ...
+    // TODO: implement COMP_CHAR_ARRAY, COMP_INT_LISTID, COMP_STRING_LISTID, ...
   default:
     yywarning("%s in %s expects a %s but that is not implemented",
       cp->name, cfg_strct_name(strct), cfg_comp_type(cp->type));
@@ -943,11 +1070,11 @@ void cfg_update_mcuid(AVRPART *part) {
     return;
 
   // Don't assign an mcuid for 32-bit AVR parts
-  if(part->prog_modes & PM_aWire)
+  if(is_awire(part))
     return;
 
   // Find an entry that shares the same name, overwrite mcuid with known, existing mcuid
-  for(size_t i=0; i < sizeof uP_table/sizeof *uP_table; i++) {
+  for(size_t i = 0; i < sizeof uP_table/sizeof *uP_table; i++) {
     if(str_caseeq(part->desc, uP_table[i].name)) {
       if(part->mcuid != (int) uP_table[i].mcuid) {
         if(part->mcuid >= 0 && verbose >= MSG_DEBUG)
@@ -959,24 +1086,24 @@ void cfg_update_mcuid(AVRPART *part) {
   }
 
   // None have the same name: an entry with part->mcuid might be an error
-  for(size_t i=0; i < sizeof uP_table/sizeof *uP_table; i++)
+  for(size_t i = 0; i < sizeof uP_table/sizeof *uP_table; i++)
     if(part->mcuid == (int) uP_table[i].mcuid) {
       // Complain unless it can be considered a variant, eg, ATmega32L and ATmega32
       AVRMEM *flash = avr_locate_flash(part);
+
       if(flash) {
         size_t l1 = strlen(part->desc), l2 = strlen(uP_table[i].name);
+
         if(strncasecmp(part->desc, uP_table[i].name, l1 < l2? l1: l2) ||
-            flash->size != uP_table[i].flashsize ||
-            flash->page_size != uP_table[i].pagesize ||
-            part->n_interrupts != (int8_t) uP_table[i].ninterrupts)
+          flash->size != uP_table[i].flashsize ||
+          flash->page_size != uP_table[i].pagesize || part->n_interrupts != (int8_t) uP_table[i].ninterrupts)
           yywarning("mcuid %d is reserved for %s, use a free number >= %d",
             part->mcuid, uP_table[i].name, sizeof uP_table/sizeof *uP_table);
       }
       return;
     }
-
   // Range check
   if(part->mcuid < 0 || part->mcuid >= UB_N_MCU)
     yywarning("mcuid %d for %s is out of range [0..%d], use a free number >= %d",
-      part->mcuid, part->desc, UB_N_MCU-1, sizeof uP_table/sizeof *uP_table);
+      part->mcuid, part->desc, UB_N_MCU - 1, sizeof uP_table/sizeof *uP_table);
 }

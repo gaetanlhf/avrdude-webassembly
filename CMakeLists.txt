@@ -20,8 +20,8 @@
 #     cmake -B build
 #     cmake --build build
 
-cmake_minimum_required(VERSION 3.5)
-project(avrdude VERSION 7.3 LANGUAGES C CXX)
+cmake_minimum_required(VERSION 3.14)
+project(avrdude VERSION 8.1 LANGUAGES C CXX)
 
 # check if we are doing emscripten
 if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
@@ -60,7 +60,7 @@ include(FindPackageMessage)
 include(GNUInstallDirs)
 
 set(CONFIG_DIR "${CMAKE_INSTALL_FULL_SYSCONFDIR}")
-set(AVRDUDE_FULL_VERSION ${CMAKE_PROJECT_VERSION})
+set(AVRDUDE_FULL_VERSION "${CMAKE_PROJECT_VERSION}${EXTRA_VERSION_SUFFIX}")
 
 # =====================================
 # Get Git commit info
@@ -102,7 +102,7 @@ if(Git_FOUND)
 
     # If the commit is not tagged, include the date and commit hash in the full version string.
     if(NOT GIT_COMMIT_HASH STREQUAL GIT_TAG_HASH)
-        set(AVRDUDE_FULL_VERSION "${CMAKE_PROJECT_VERSION}-${GIT_COMMIT_DATE} (${GIT_COMMIT_HASH})")
+        set(AVRDUDE_FULL_VERSION "${CMAKE_PROJECT_VERSION}-${GIT_COMMIT_DATE}${EXTRA_VERSION_SUFFIX} (${GIT_COMMIT_HASH})")
     endif()
 endif()
 
@@ -231,7 +231,7 @@ endif()
 find_library(HAVE_LIBREADLINE NAMES ${PREFERRED_LIBREADLINE})
 if(HAVE_LIBREADLINE)
     set(LIB_LIBREADLINE ${HAVE_LIBREADLINE})
-    find_library(LIB_NCURSES NAMES ncurses)
+    find_library(LIB_NCURSES NAMES ncurses pdcurses)
 elseif(MSVC)
     set(HAVE_LIBREADLINE 1)
 endif()
@@ -242,28 +242,56 @@ if(HAVE_LINUXGPIO)
     # defaults/fallbacks
     set(HAVE_LIBGPIOD 0)
     set(HAVE_LIBGPIOD_V2 0)
+    set(HAVE_LIBGPIOD_V1_6 0)
 
     find_package(PkgConfig)
     if(PKG_CONFIG_FOUND)
         # check whether we have version >= 2.0
-        pkg_check_modules(LIBGPIODV2 libgpiod>=2.0)
+        message(STATUS "Checking for module 'libgpiod'...")
+        pkg_check_modules(LIBGPIODV2 QUIET libgpiod>=2.0)
         if(LIBGPIODV2_FOUND)
+            message(STATUS "Found module 'libgpiod' (found version \"${LIBGPIODV2_VERSION}\")")
             set(HAVE_LIBGPIOD 1)
             set(HAVE_LIBGPIOD_V2 1)
             set(CMAKE_REQUIRED_LIBRARIES ${LIBGPIODV2_LIBRARIES})
             set(LIB_LIBGPIOD ${LIBGPIODV2_LINK_LIBRARIES})
         else()
-            # check whether we have at least an older version
-            pkg_check_modules(LIBGPIOD libgpiod)
-            if(LIBGPIOD_FOUND)
+            # check whether we have version >= 1.6
+            pkg_check_modules(LIBGPIODV1_6 QUIET libgpiod>=1.6)
+            if(LIBGPIODV1_6_FOUND)
+                message(STATUS "Found module 'libgpiod' (found version \"${LIBGPIODV1_6_VERSION}\")")
                 set(HAVE_LIBGPIOD 1)
-                set(CMAKE_REQUIRED_LIBRARIES ${LIBGPIOD_LIBRARIES})
-                set(LIB_LIBGPIOD ${LIBGPIOD_LINK_LIBRARIES})
+                set(HAVE_LIBGPIOD_V1_6 1)
+                set(CMAKE_REQUIRED_LIBRARIES ${LIBGPIODV1_6_LIBRARIES})
+                set(LIB_LIBGPIOD ${LIBGPIODV1_6_LINK_LIBRARIES})
+            else()
+                # check whether we have at least an older version
+                pkg_check_modules(LIBGPIOD QUIET libgpiod)
+                if(LIBGPIOD_FOUND)
+                    message(STATUS "Found module 'libgpiod' (found version \"${LIBGPIOD_VERSION}\")")
+                    set(HAVE_LIBGPIOD 1)
+                    set(CMAKE_REQUIRED_LIBRARIES ${LIBGPIOD_LIBRARIES})
+                    set(LIB_LIBGPIOD ${LIBGPIOD_LINK_LIBRARIES})
+                else()
+                    message(STATUS "Could not find module 'libgpiod', proceeding without.")
+                endif()
             endif()
         endif()
     else()
         message(WARNING "For using libgpiod, pkg-config would be required which is not available.")
     endif()
+endif()
+
+# -------------------------------------
+# Find SWIG
+find_package(SWIG 4.0 COMPONENTS python)
+if(SWIG_FOUND)
+  find_package(Python3 COMPONENTS Interpreter Development)
+  if(PYTHON3_FOUND)
+    set(HAVE_SWIG 1)
+  else()
+    message(STATUS "Found SWIG but no Python3 header/library; cannot use SWIG")
+  endif()
 endif()
 
 # =====================================
@@ -326,6 +354,14 @@ if(BUILD_DOC)
     add_subdirectory(src/doc)
 endif()
 
+if(HAVE_PARPORT)
+  if(WIN32)
+    message(FATAL_ERROR "avrdude does not support parallel port on Windows")
+  elseif(APPLE)
+    message(FATAL_ERROR "avrdude does not support parallel port on Apple systems")
+  endif()
+endif()
+
 # =====================================
 # Configuration
 # =====================================
@@ -339,6 +375,7 @@ if (DEBUG_CMAKE)
     message(STATUS "CMAKE_FIND_ROOT_PATH: ${CMAKE_FIND_ROOT_PATH}")
     message(STATUS "CMAKE_C_COMPILER: ${CMAKE_C_COMPILER}")
     message(STATUS "CONFIG_DIR: ${CONFIG_DIR}")
+    message(STATUS "EXTRA_VERSION_SUFFIX: ${EXTRA_VERSION_SUFFIX}")
     message(STATUS "AVRDUDE_FULL_VERSION: ${AVRDUDE_FULL_VERSION}")
     message(STATUS "USE_EXTERNAL_LIBS: ${USE_EXTERNAL_LIBS}")
     message(STATUS "USE_LIBUSBWIN32: ${USE_LIBUSBWIN32}")
@@ -360,6 +397,7 @@ if (DEBUG_CMAKE)
     message(STATUS "HAVE_HIDAPI_HIDAPI_H: ${HAVE_HIDAPI_HIDAPI_H}")
     message(STATUS "LIBUSB_COMPAT_DIR: ${LIBUSB_COMPAT_DIR}")
     message(STATUS "LIBGPIODV2_FOUND: ${LIBGPIODV2_FOUND}")
+    message(STATUS "LIBGPIODV1_6_FOUND: ${LIBGPIODV1_6_FOUND}")
     message(STATUS "LIBGPIOD_FOUND: ${LIBGPIOD_FOUND}")
     message(STATUS "----------------------")
 endif()
@@ -431,9 +469,11 @@ endif()
 if(HAVE_LINUXGPIO)
     message(STATUS "ENABLED    linuxgpio")
     if (LIBGPIODV2_FOUND)
-        message(STATUS "DO HAVE    libgpiod (v2.x)")
+        message(STATUS "DO HAVE    libgpiod (${LIBGPIODV2_VERSION})")
+    elseif(LIBGPIODV1_6_FOUND)
+        message(STATUS "DO HAVE    libgpiod (${LIBGPIODV1_6_VERSION})")
     elseif(LIBGPIOD_FOUND)
-        message(STATUS "DO HAVE    libgpiod")
+        message(STATUS "DO HAVE    libgpiod (${LIBGPIOD_VERSION})")
     else()
         message(STATUS "DON'T HAVE libgpiod")
     endif()
@@ -445,6 +485,12 @@ if(HAVE_LINUXSPI)
     message(STATUS "ENABLED    linuxspi")
 else()
     message(STATUS "DISABLED   linuxspi")
+endif()
+
+if(HAVE_SWIG)
+    message(STATUS "DO HAVE    swig+Python3")
+else()
+    message(STATUS "DON'T HAVE swig+Python3")
 endif()
 
 message(STATUS "----------------------")

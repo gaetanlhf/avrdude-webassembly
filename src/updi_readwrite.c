@@ -1,6 +1,6 @@
 /*
  * avrdude - A Downloader/Uploader for AVR device programmers
- * Copyright (C) 2021  Dawid Buchwald
+ * Copyright (C) 2021 Dawid Buchwald
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
-/* $Id$ */
 
 /*
  * Based on pymcuprog
@@ -148,18 +146,18 @@ int updi_read_data(const PROGRAMMER *pgm, uint32_t address, uint8_t *buffer, uin
 */
   pmsg_debug("reading %d bytes from 0x%06X\n", size, address);
 
-  if (size > UPDI_MAX_REPEAT_SIZE) {
+  if(size > UPDI_MAX_REPEAT_SIZE) {
     pmsg_debug("cannot read that many bytes in one go\n");
     return -1;
   }
 
-  if (updi_link_st_ptr(pgm, address) < 0) {
+  if(updi_link_st_ptr(pgm, address) < 0) {
     pmsg_debug("ST_PTR operation failed\n");
     return -1;
   }
 
-  if (size > 1) {
-    if (updi_link_repeat(pgm, size) < 0) {
+  if(size > 1) {
+    if(updi_link_repeat(pgm, size) < 0) {
       pmsg_debug("repeat operation failed\n");
       return -1;
     }
@@ -195,25 +193,25 @@ int updi_write_data(const PROGRAMMER *pgm, uint32_t address, uint8_t *buffer, ui
         self.datalink.repeat(len(data))
         return self.datalink.st_ptr_inc(data)
 */
-  if (size == 1) {
+  if(size == 1) {
     return updi_link_st(pgm, address, buffer[0]);
   }
-  if (size == 2) {
-    if (updi_link_st(pgm, address, buffer[0]) < 0) {
+  if(size == 2) {
+    if(updi_link_st(pgm, address, buffer[0]) < 0) {
       pmsg_debug("ST operation failed\n");
       return -1;
     }
-    return updi_link_st(pgm, address+1, buffer[1]);
+    return updi_link_st(pgm, address + 1, buffer[1]);
   }
-  if (size > UPDI_MAX_REPEAT_SIZE) {
+  if(size > UPDI_MAX_REPEAT_SIZE) {
     pmsg_debug("invalid length\n");
     return -1;
   }
-  if (updi_link_st_ptr(pgm, address) < 0) {
+  if(updi_link_st_ptr(pgm, address) < 0) {
     pmsg_debug("ST_PTR operation failed\n");
     return -1;
   }
-  if (updi_link_repeat(pgm, size) < 0) {
+  if(updi_link_repeat(pgm, size) < 0) {
     pmsg_debug("repeat operation failed\n");
     return -1;
   }
@@ -247,18 +245,18 @@ int updi_read_data_words(const PROGRAMMER *pgm, uint32_t address, uint8_t *buffe
 */
   pmsg_debug("reading %d words from 0x%06X", size, address);
 
-  if (size > (UPDI_MAX_REPEAT_SIZE >> 1)) {
+  if(size > (UPDI_MAX_REPEAT_SIZE >> 1)) {
     pmsg_debug("cannot read that many words in one go\n");
     return -1;
   }
 
-  if (updi_link_st_ptr(pgm, address) < 0) {
+  if(updi_link_st_ptr(pgm, address) < 0) {
     pmsg_debug("ST_PTR operation failed\n");
     return -1;
   }
 
-  if (size > 1) {
-    if (updi_link_repeat(pgm, size) < 0) {
+  if(size > 1) {
+    if(updi_link_repeat(pgm, size) < 0) {
       pmsg_debug("repeat operation failed\n");
       return -1;
     }
@@ -291,14 +289,14 @@ int updi_write_data_words(const PROGRAMMER *pgm, uint32_t address, uint8_t *buff
         self.datalink.repeat(len(data) >> 1)
         return self.datalink.st_ptr_inc16(data)
 */
-  if (size == 2) {
+  if(size == 2) {
     return updi_link_st16(pgm, address, buffer[0] + (buffer[1] << 8));
   }
-  if (size > UPDI_MAX_REPEAT_SIZE << 1) {
+  if(size > UPDI_MAX_REPEAT_SIZE << 1) {
     pmsg_debug("invalid length\n");
     return -1;
   }
-  if (updi_link_st_ptr(pgm, address) < 0) {
+  if(updi_link_st_ptr(pgm, address) < 0) {
     pmsg_debug("ST_PTR operation failed\n");
     return -1;
   }

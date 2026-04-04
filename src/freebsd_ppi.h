@@ -16,8 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 #ifndef freebsd_ppi_h
 #define freebsd_ppi_h
 
@@ -27,13 +25,12 @@
 
 #define ppi_release(fd) {}
 
-#define DO_PPI_READ(fd, reg, valp) \
-	(void)ioctl(fd, \
-		(reg) == PPIDATA? PPIGDATA: ((reg) == PPICTRL? PPIGCTRL: PPIGSTATUS), \
-		    valp)
-#define DO_PPI_WRITE(fd, reg, valp) \
-	(void)ioctl(fd, \
-		(reg) == PPIDATA? PPISDATA: ((reg) == PPICTRL? PPISCTRL: PPISSTATUS), \
-		    valp)
+#define DO_PPI_READ(fd, reg, valp) ((void) ioctl((fd), \
+  (reg) == PPIDATA? PPIGDATA: (reg) == PPICTRL? PPIGCTRL: PPIGSTATUS, \
+  (valp)))
 
-#endif /* freebsd_ppi_h */
+#define DO_PPI_WRITE(fd, reg, valp) ((void) ioctl((fd), \
+  (reg) == PPIDATA? PPISDATA: (reg) == PPICTRL? PPISCTRL: PPISSTATUS, \
+  (valp)))
+
+#endif

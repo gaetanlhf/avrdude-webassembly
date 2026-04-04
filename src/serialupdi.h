@@ -1,6 +1,6 @@
 /*
  * avrdude - A Downloader/Uploader for AVR device programmers
- * Copyright (C) 2021  Dawid Buchwald
+ * Copyright (C) 2021 Dawid Buchwald
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-/* $Id$ */
-
 /*
  * Based on pymcuprog
  * See https://github.com/microchip-pic-avr-tools/pymcuprog
@@ -33,11 +31,11 @@
 extern "C" {
 #endif
 
-extern const char serialupdi_desc[];
-void serialupdi_initpgm(PROGRAMMER *pgm);
+  extern const char serialupdi_desc[];
+  void serialupdi_initpgm(PROGRAMMER *pgm);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* serialupdi_h */
+#endif

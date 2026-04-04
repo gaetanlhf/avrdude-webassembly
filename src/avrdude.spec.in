@@ -1,7 +1,5 @@
 ## -*- mode: rpm-spec; -*-
 ##
-## $Id$
-##
 ## @configure_input@
 ##
 
@@ -88,7 +86,6 @@ fi
 %doc %{_infodir}/*info*
 %doc doc/avrdude-html/*.html
 %doc doc/TODO
-%doc doc/avrdude.ps
 %doc doc/avrdude.pdf
 %endif
 

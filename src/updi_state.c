@@ -1,6 +1,6 @@
 /*
  * avrdude - A Downloader/Uploader for AVR device programmers
- * Copyright (C) 2021  Dawid Buchwald
+ * Copyright (C) 2021 Dawid Buchwald
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-/* $Id$ */
-
 /*
  * Based on pymcuprog
  * See https://github.com/microchip-pic-avr-tools/pymcuprog
@@ -29,30 +27,30 @@
 #include "libavrdude.h"
 #include "updi_state.h"
 
-updi_sib_info* updi_get_sib_info(const PROGRAMMER *pgm) {
-  return &((updi_state *)(pgm->cookie))->sib_info;
+updi_sib_info *updi_get_sib_info(const PROGRAMMER *pgm) {
+  return &((updi_state *) (pgm->cookie))->sib_info;
 }
 
 updi_datalink_mode updi_get_datalink_mode(const PROGRAMMER *pgm) {
-  return ((updi_state *)(pgm->cookie))->datalink_mode;
+  return ((updi_state *) (pgm->cookie))->datalink_mode;
 }
 
 void updi_set_datalink_mode(const PROGRAMMER *pgm, updi_datalink_mode mode) {
-  ((updi_state *)(pgm->cookie))->datalink_mode = mode;
+  ((updi_state *) (pgm->cookie))->datalink_mode = mode;
 }
 
 updi_nvm_mode updi_get_nvm_mode(const PROGRAMMER *pgm) {
-  return ((updi_state *)(pgm->cookie))->nvm_mode;
+  return ((updi_state *) (pgm->cookie))->nvm_mode;
 }
 
 void updi_set_nvm_mode(const PROGRAMMER *pgm, updi_nvm_mode mode) {
-  ((updi_state *)(pgm->cookie))->nvm_mode = mode;
+  ((updi_state *) (pgm->cookie))->nvm_mode = mode;
 }
 
 updi_rts_mode updi_get_rts_mode(const PROGRAMMER *pgm) {
-  return ((updi_state *)(pgm->cookie))->rts_mode;
+  return ((updi_state *) (pgm->cookie))->rts_mode;
 }
 
 void updi_set_rts_mode(const PROGRAMMER *pgm, updi_rts_mode mode) {
-  ((updi_state *)(pgm->cookie))->rts_mode = mode;
+  ((updi_state *) (pgm->cookie))->rts_mode = mode;
 }

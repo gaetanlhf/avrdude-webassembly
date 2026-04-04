@@ -1,6 +1,6 @@
 /*
  * avrdude - A Downloader/Uploader for AVR device programmers
- * Copyright (C) 2000-2004  Brian S. Dean <bsd@bdmicro.com>
+ * Copyright (C) 2000-2004 Brian S. Dean <bsd@bdmicro.com>
  * Copyright (C) 2006 Joerg Wunsch <j@uriah.heep.sax.de>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,8 +17,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 %{
 #include <math.h>
 #include <string.h>
@@ -27,7 +25,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "ac_cfg.h"
+#include <ac_cfg.h>
 #include "avrdude.h"
 #include "libavrdude.h"
 #include "config.h"
@@ -97,13 +95,13 @@ INF  [Ii][Nn][Ff]([Ii][Nn][Ii][Tt][Yy])?
 }
 
 ["]([^"\\\n]|\\.|\\\n)*["] {
-  char *str= cfg_strdup("lexer.l", yytext);
+  char *str= mmt_strdup(yytext);
   cfg_unescape(str, str+1);
   size_t len = strlen(str);
   if(len)
     str[len-1] = 0;
   yylval = new_string(str);
-  free(str);
+  mmt_free(str);
   return TKN_STRING;
 }
 
@@ -149,7 +147,7 @@ INF  [Ii][Nn][Ff]([Ii][Nn][Ii][Tt][Yy])?
 
 
 (?x: desc | prog_modes | is_serialadapter | extra_features | baudrate | usbvid | usbdev | usbsn | usbvendor | usbproduct |
-  family_id | mcuid | n_interrupts | n_page_erase | n_boot_sections | boot_section_size |
+  family_id | mcuid | archnum | n_interrupts | n_page_erase | n_boot_sections | boot_section_size |
   hvupdi_variant | stk500_devcode | avr910_devcode | chip_erase_delay | pagel | bs2 |
   timeout | stabdelay | cmdexedelay | synchloops | bytedelay | pollindex | pollvalue | predelay | postdelay | pollmethod |
   hventerstabdelay | progmodedelay | latchcycles | togglevtg | poweroffdelay | resetdelayms | resetdelayus | resetdelay | hvleavestabdelay |
@@ -159,7 +157,7 @@ INF  [Ii][Nn][Ff]([Ii][Nn][Ii][Tt][Yy])?
   paged | size | num_pages | initval | bitmask | n_word_writes | offset | min_write_delay | max_write_delay | pwroff_after_write |
   readback_p1 | readback_p2 | mode | delay | blocksize | readsize ) {
   /* struct components for PROGRAMMER, AVRPART and AVRMEM */
-  Component_t *cp = cfg_comp_search(yytext, current_strct);
+  Component *cp = cfg_comp_search(yytext, current_strct);
   if(!cp) {
     yyerror("unknown component %s in %s", yytext, cfg_strct_name(current_strct));
     return YYERRCODE;
@@ -172,7 +170,7 @@ INF  [Ii][Nn][Ff]([Ii][Nn][Ii][Tt][Yy])?
 
 
 (?x: PM_(SPM|TPI|ISP|PDI|UPDI|HVSP|HVPP|debugWIRE|JTAG|JTAGmkI|XMEGAJTAG|AVR32JTAG|aWire) |
- HAS_(SUFFER|VTARG_SWITCH|VTARG_ADJ|VTARG_READ|FOSC_ADJ|VAREF_ADJ) |
+ HAS_(SUFFER|VTARG_SWITCH|VTARG_ADJ|VTARG_READ|FOSC_ADJ|VAREF_ADJ|BITCLOCK_ADJ) |
  yes|no|pseudo | true|false ) { /* Constants */
   yylval = new_constant(yytext);
   return TKN_NUMBER;
@@ -193,31 +191,22 @@ default_programmer { yylval=NULL; return K_DEFAULT_PROGRAMMER; }
 default_serial   { yylval=NULL; return K_DEFAULT_SERIAL; }
 default_spi      { yylval=NULL; return K_DEFAULT_SPI; }
 default_linuxgpio { yylval=NULL; return K_DEFAULT_LINUXGPIO; }
-devicecode       { yylval=NULL; ccap(); return K_DEVICECODE; }
 eeprom           { yylval=NULL; return K_EEPROM; }
 eeprom_instr     { yylval=NULL; ccap(); return K_EEPROM_INSTR; }
 enablepageprogramming { yylval=NULL; ccap(); return K_ENABLEPAGEPROGRAMMING; }
 errled           { yylval=NULL; ccap(); return K_ERRLED; }
 flash            { yylval=NULL; return K_FLASH; }
 flash_instr      { yylval=NULL; ccap(); return K_FLASH_INSTR; }
-has_debugwire    { yylval=NULL; ccap(); return K_HAS_DW; }
-has_jtag         { yylval=NULL; ccap(); return K_HAS_JTAG; }
-has_pdi          { yylval=NULL; ccap(); return K_HAS_PDI; }
-has_tpi          { yylval=NULL; ccap(); return K_HAS_TPI; }
-has_updi         { yylval=NULL; ccap(); return K_HAS_UPDI; }
 hvsp_controlstack  { yylval=NULL; ccap(); return K_HVSP_CONTROLSTACK; }
 hvupdi_support   { yylval=NULL; ccap(); return K_HVUPDI_SUPPORT; }
 id               { yylval=NULL; ccap(); return K_ID; }
 io               { yylval=new_token(K_IO); return K_IO; }
 is_at90s1200     { yylval=NULL; ccap(); return K_IS_AT90S1200; }
-is_avr32         { yylval=NULL; ccap(); return K_IS_AVR32; }
 linuxgpio        { yylval=NULL; ccap(); return K_LINUXGPIO; }
 load_ext_addr    { yylval=new_token(K_LOAD_EXT_ADDR); ccap(); return K_LOAD_EXT_ADDR; }
 loadpage_hi      { yylval=new_token(K_LOADPAGE_HI); ccap(); return K_LOADPAGE_HI; }
 loadpage_lo      { yylval=new_token(K_LOADPAGE_LO); ccap(); return K_LOADPAGE_LO; }
 memory           { yylval=NULL; ccap(); current_strct = COMP_AVRMEM; return K_MEMORY; }
-miso             { yylval=NULL; ccap(); yywarning("miso is deprecated, will be removed in v8.0, use sdi"); return K_SDI; }
-mosi             { yylval=NULL; ccap(); yywarning("mosi is deprecated, will be removed in v8.0, use sdo"); return K_SDO; }
 NULL             { yylval=NULL; return K_NULL; }
 page_size        { yylval=NULL; ccap(); return K_PAGE_SIZE; }
 parallel         { yylval=NULL; ccap(); return K_PARALLEL; }
@@ -225,8 +214,11 @@ parent           { yylval=NULL; return K_PARENT; }
 part             { yylval=NULL; ccap(); current_strct = COMP_AVRPART; return K_PART; }
 pgm_enable       { yylval=new_token(K_PGM_ENABLE); ccap(); return K_PGM_ENABLE; }
 pgmled           { yylval=NULL; ccap(); return K_PGMLED; }
+pico             { yylval=NULL; ccap(); return K_SDO; }
+poci             { yylval=NULL; ccap(); return K_SDI; }
 pp_controlstack  { yylval=NULL; ccap(); return K_PP_CONTROLSTACK; }
-(programmer|serialadapter) { yylval=NULL; ccap(); current_strct = COMP_PROGRAMMER; return K_PROGRAMMER; }
+(programmer|serialadapter) { yylval=NULL; ccap(); current_strct = COMP_PROGRAMMER;
+                   cx->lex_kw_is_programmer = *yytext == 'p'; return K_PROGRAMMER; }
 rdyled           { yylval=NULL; ccap(); return K_RDYLED; }
 read             { yylval=new_token(K_READ); ccap(); return K_READ; }
 read_hi          { yylval=new_token(K_READ_HI); ccap(); return K_READ_HI; }

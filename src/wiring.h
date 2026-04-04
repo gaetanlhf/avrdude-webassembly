@@ -16,14 +16,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 #ifndef wiring_h__
 #define wiring_h__
 
 extern const char wiring_desc[];
 void wiring_initpgm(PROGRAMMER *pgm);
-
 #endif
-
-

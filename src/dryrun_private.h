@@ -16,8 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 #ifndef dryrun_private_h__
 #define dryrun_private_h__
 
@@ -40,7 +38,6 @@
 #define Cmnd_STK_READ_SIGN      0x75
 
 // STK_UNIVERSAL commands
-#define Subc_STK_UNIVERSAL_LEXT 0x4d000000u // Load extended address
-#define Subc_STK_UNIVERSAL_CE   0xac800000u // Chip erase
-
+#define Subc_STK_UNIVERSAL_LEXT 0x4d000000u     // Load extended address
+#define Subc_STK_UNIVERSAL_CE   0xac800000u     // Chip erase
 #endif

@@ -16,8 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 #ifndef flip2_h
 #define flip2_h
 
@@ -25,11 +23,11 @@
 extern "C" {
 #endif
 
-extern const char flip2_desc[];
-extern void flip2_initpgm(PROGRAMMER *pgm);
+  extern const char flip2_desc[];
+  extern void flip2_initpgm(PROGRAMMER *pgm);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* flip2_h */
+#endif

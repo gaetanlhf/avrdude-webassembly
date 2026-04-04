@@ -1,7 +1,7 @@
 
 #
 # avrdude - A Downloader/Uploader for AVR device programmers
-# Copyright (C) 2003, 2004  Theodore A. Roth  <troth@openavr.org>
+# Copyright (C) 2003, 2004 Theodore A. Roth <troth@openavr.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,23 +26,23 @@
 #
 # make V=1
 
-#
-# $Id$
-#
-
 EXTRA_DIST   = \
 	avrdude.1 \
 	avrdude.spec \
 	bootstrap
 
-CLEANFILES = \
-	config_gram.c \
-	config_gram.h \
-	lexer.c
+BUILT_SOURCES  =
+CLEANFILES     =
+
+built_sources  =
+built_sources += config_gram.c
+built_sources += config_gram.h
+built_sources += lexer.c
+
+BUILT_SOURCES += $(built_sources)
+CLEANFILES    += $(built_sources)
 
 include build-helpers/versioninfo.mk
-
-BUILT_SOURCES = $(CLEANFILES)
 
 #SUBDIRS      = doc
 #DIST_SUBDIRS = doc
@@ -57,19 +57,16 @@ AM_YFLAGS    = -d
 
 avrdude_CPPFLAGS = -DCONFIG_DIR=\"$(sysconfdir)\"
 
-libavrdude_a_CPPFLAGS = -DCONFIG_DIR=\"$(sysconfdir)\"
-libavrdude_la_CPPFLAGS = $(libavrdude_a_CPPFLAGS)
+libavrdude_la_CPPFLAGS = -DCONFIG_DIR=\"$(sysconfdir)\"
 
 avrdude_CFLAGS   = @ENABLE_WARNINGS@
 
-libavrdude_a_CFLAGS   = @ENABLE_WARNINGS@ $(LIBGPIOD_CFLAGS)
-libavrdude_la_CFLAGS  = $(libavrdude_a_CFLAGS)
+libavrdude_la_CFLAGS   = @ENABLE_WARNINGS@ $(LIBGPIOD_CFLAGS)
 
-avrdude_LDADD  = $(top_builddir)/$(noinst_LIBRARIES) @LIBUSB_1_0@ @LIBHIDAPI@ @LIBUSB@ @LIBFTDI1@ @LIBFTDI@ @LIBHID@ @LIBELF@ @LIBPTHREAD@ @LIBSERIALPORT@ $(LIBGPIOD_LIBS) -lm
+avrdude_LDADD  = libavrdude.la @LIBUSB_1_0@ @LIBHIDAPI@ @LIBUSB@ @LIBFTDI1@ @LIBFTDI@ @LIBHID@ @LIBELF@ @LIBPTHREAD@ @LIBSERIALPORT@ $(LIBGPIOD_LIBS) -lm
 
 bin_PROGRAMS = avrdude
 
-noinst_LIBRARIES = libavrdude.a
 lib_LTLIBRARIES = libavrdude.la
 
 # automake thinks these generated files should be in the distribution,
@@ -81,13 +78,14 @@ lib_LTLIBRARIES = libavrdude.la
 # https://savannah.nongnu.org/bugs/index.php?func=detailitem&item_id=15536
 #
 # for why we don't want to have them.
-dist-hook:
-	rm -f \
-	$(distdir)/lexer.c \
-	$(distdir)/config_gram.c \
-	$(distdir)/config_gram.h
+#
+# We could avoid this dist-hook altogether if we could require
+# Automake >= 1.16.4 and just use its no-dist-built-sources flag.
+dist-hook: dist-hook-no-dist-built-sources-workaround
+dist-hook-no-dist-built-sources-workaround:
+	cd "$(distdir)" && rm -f $(built_sources)
 
-libavrdude_a_SOURCES = \
+libavrdude_la_SOURCES = \
 	config_gram.y \
 	lexer.l \
 	arduino.h \
@@ -105,6 +103,7 @@ libavrdude_a_SOURCES = \
 	avrintel.c \
 	libavrdude-avrintel.h \
 	avrpart.c \
+	avr_opcodes.c \
 	bitbang.c \
 	bitbang.h \
 	buspirate.c \
@@ -118,6 +117,7 @@ libavrdude_a_SOURCES = \
 	confwin.c \
 	crc16.c \
 	crc16.h \
+	disasm.c \
 	dfu.c \
 	dfu.h \
 	dryrun.c \
@@ -156,10 +156,18 @@ libavrdude_a_SOURCES = \
 	pgm_type.c \
 	pickit2.c \
 	pickit2.h \
+	pickit5_lut_dw.c \
+	pickit5_lut_isp.c \
+	pickit5_lut_jtag.c \
+	pickit5_lut_pdi.c \
+	pickit5_lut_tpi.c \
+	pickit5_lut_updi.c \
+	pickit5_lut.h \
+	pickit5.c \
+	pickit5.h \
 	pindefs.c \
 	ppi.c \
 	ppi.h \
-	ppiwin.c \
 	serbb.h \
 	serbb_posix.c \
 	serbb_win32.c \
@@ -185,6 +193,8 @@ libavrdude_a_SOURCES = \
 	usbasp.h \
 	serialupdi.c \
 	serialupdi.h \
+	serprog.c \
+	serprog.h \
 	updi_constants.h \
 	updi_link.c \
 	updi_link.h \
@@ -204,6 +214,11 @@ libavrdude_a_SOURCES = \
 	updi_nvm_v4.h \
 	updi_nvm_v5.c \
 	updi_nvm_v5.h \
+	updi_nvm_v6.c \
+	updi_nvm_v6.h \
+	urbootlist.c \
+	urbootlist.h \
+	urbootautogen.c \
 	urclock.c \
 	urclock.h \
 	urclock_hash.h \
@@ -218,8 +233,7 @@ libavrdude_a_SOURCES = \
 	wiring.c \
 	xbee.h \
 	xbee.c
-libavrdude_la_SOURCES = $(libavrdude_a_SOURCES)
-libavrdude_la_LDFLAGS = -version-info 2:0
+libavrdude_la_LDFLAGS = -version-info @LIBAVRDUDE_VERSION_INFO@
 
 include_HEADERS = libavrdude.h
 include_HEADERS += libavrdude-avrintel.h
@@ -231,6 +245,8 @@ avrdude_SOURCES = \
 	developer_opts.c \
 	developer_opts.h \
 	developer_opts_private.h
+
+dist_bin_SCRIPTS = elf2tag
 
 man_MANS = avrdude.1
 

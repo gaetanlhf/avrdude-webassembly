@@ -1,6 +1,6 @@
 #
 # avrdude - A Downloader/Uploader for AVR device programmers
-# Copyright (C) 2003, 2004  Theodore A. Roth  <troth@openavr.org>
+# Copyright (C) 2003, 2004 Theodore A. Roth <troth@openavr.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,10 +14,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-
-#
-# $Id$
 #
 
 # Process this file with autoreconf to produce a configure script.
@@ -36,9 +32,10 @@ dnl 2018-02-25 automake 1.16
 dnl 2018-03-11 automake 1.16.1  install-sh symlink fix
 
 
-dnl Change this definition if you want to change the dist tarball name
-dnl pattern from avrdude-7.3 for releases and avrdude-7.3-${COMMIT_DATE}
-dnl for snapshots.
+dnl Define the dist tarball name as
+dnl   * avrdude-7.3 for releases
+dnl   * avrdude-7.3-${COMMIT_DATE} for snapshots
+dnl just like CMakeLists.txt does.
 m4_define([versioninfo_AVRDUDE_PACKAGE_VERSION],
           m4_case(m4_defn([versioninfo_GIT_COMMIT_HASH]),
 	          m4_defn([versioninfo_GIT_TAG_HASH]),
@@ -67,7 +64,13 @@ AM_INIT_AUTOMAKE([
 
 AM_SILENT_RULES([yes])
 
-
+dnl Set up the macro definitions for versioninfo_* which we hand to AC_INIT.
+dnl
+dnl Yes, it does work to expand the VERSIONINFO_SETUP macro *after* AC_INIT:
+dnl The presence of VERSIONINFO_SETUP pulls in the definitions at the top.
+dnl
+dnl For details, see the build-helpers/versioninfo.{md,m4,mk,sh} files.
+m4_pattern_forbid([VERSIONINFO_SETUP])dnl
 VERSIONINFO_SETUP()
 
 dnl Inform about the derived PACKAGE_VERSION
@@ -77,16 +80,45 @@ AC_MSG_RESULT([$PACKAGE_VERSION])
 dnl Compose the full version message mirroring the cmake one, inform
 dnl about it and pass it on to avrdude.conf and the "avrdude -?"
 dnl version message
+AC_ARG_VAR([EXTRA_VERSION_SUFFIX],
+           [extra version information to be appended to the version])
 AC_MSG_CHECKING([versioninfo derived AVRDUDE_FULL_VERSION])
 if test "x$GIT_COMMIT_HASH" = "x$GIT_TAG_HASH"; then
-	AVRDUDE_FULL_VERSION="$PACKAGE_VERSION"
+	AVRDUDE_FULL_VERSION="$PACKAGE_VERSION$EXTRA_VERSION_SUFFIX"
 else
-	AVRDUDE_FULL_VERSION="$PACKAGE_VERSION ($GIT_COMMIT_HASH)"
+	AVRDUDE_FULL_VERSION="$PACKAGE_VERSION$EXTRA_VERSION_SUFFIX ($GIT_COMMIT_HASH)"
 fi
 AC_MSG_RESULT([$AVRDUDE_FULL_VERSION])
 AC_DEFINE_UNQUOTED([AVRDUDE_FULL_VERSION], ["$AVRDUDE_FULL_VERSION"],
                    [The full avrdude version as displayed in -? and avrdude.conf])
 AC_SUBST([AVRDUDE_FULL_VERSION])
+
+
+# Define libavrdude libtool version from cmake libavrdude information
+dnl
+dnl This is a very simple consistency check. If this check ever fails,
+dnl the library versioning policy and its technical implementation
+dnl must be adapted.
+m4_case(m4_defn([versioninfo_CMAKE_LIBAVRDUDE_SOVERSION])[.0.0],
+        m4_defn([versioninfo_CMAKE_LIBAVRDUDE_VERSION]),
+	[],
+	[m4_fatal([
+The cmake libavrdude VERSION should be SOVERSION.0.0 ("]m4_defn([versioninfo_CMAKE_LIBAVRDUDE_SOVERSION])[.0.0"),
+but it is actually "]m4_defn([versioninfo_CMAKE_LIBAVRDUDE_VERSION])[".
+
+This is an internal error in the logic which transfers library version
+information from the cmake buildsystem to the automake buildsystem.
+
+Please file a GitHub issue for avrdude and mention @ndim.
+	])])dnl
+dnl
+AC_MSG_CHECKING([versioninfo derived libtool -version-info for libavrdude])
+libavrdude_lt_cur=$CMAKE_LIBAVRDUDE_SOVERSION
+libavrdude_lt_rev=0
+libavrdude_lt_age=0
+AC_SUBST([LIBAVRDUDE_VERSION_INFO],
+         [${libavrdude_lt_cur}:${libavrdude_lt_rev}:${libavrdude_lt_age}])
+AC_MSG_RESULT([$LIBAVRDUDE_VERSION_INFO])
 
 
 # Checks for programs.
@@ -97,13 +129,17 @@ AC_PROG_SED
 AC_PROG_YACC
 AC_PROG_LEX([noyywrap])
 AM_PROG_AR
+
+m4_pattern_forbid([LT_INIT])dnl
 LT_INIT()
 
-# If macro PKG_PROG_PKG_CONFIG is not available, Autoconf generates a misleading error message,
-# so check for existence first, and otherwise provide helpful advice.
+dnl If macro PKG_PROG_PKG_CONFIG is not available, Autoconf generates
+dnl a misleading error message, so check for existence first, and
+dnl otherwise provide helpful advice.
 m4_ifndef([PKG_PROG_PKG_CONFIG], [m4_fatal(m4_normalize([
   Macro PKG_PROG_PKG_CONFIG is not available.
   It is usually defined in file pkg.m4 provided by package pkg-config.]))])
+m4_pattern_forbid([PKG_PROG_PKG_CONFIG])dnl
 PKG_PROG_PKG_CONFIG([0.23])
 
 AH_TEMPLATE([HAVE_YYLEX_DESTROY],
@@ -415,6 +451,17 @@ AC_ARG_ENABLE(
 		esac],
 	[enabled_parport=no])
 
+AS_IF([test "x$enabled_parport" = xyes], [dnl
+  case $target in
+        *-*-mingw32* | *-*-cygwin* | *-*-windows*)
+	  AC_MSG_ERROR([avrdude does not support parallel port on Windows])
+	;;
+        *-*-darwin*)
+	  AC_MSG_ERROR([avrdude does not support parallel port on MacOS])
+	;;
+  esac
+])
+
 AC_ARG_ENABLE(
 	[linuxgpio],
 	AS_HELP_STRING([--enable-linuxgpio],
@@ -453,36 +500,43 @@ case $target in
 	i[[3456]]86-*-linux*|x86_64-*-linux*)
 		DEFAULT_PAR_PORT="/dev/parport0"
 		DEFAULT_SER_PORT="/dev/ttyS0"
+		DEFAULT_SPI_PORT="/dev/spidev0.0:/dev/gpiochip0"
 		DEFAULT_LINUXGPIO_PORT="gpiochip0"
 		;;
 	*-*-linux*)
 		DEFAULT_PAR_PORT="unknown"
 		DEFAULT_SER_PORT="/dev/ttyS0"
+		DEFAULT_SPI_PORT="/dev/spidev0.0:/dev/gpiochip0"
 		DEFAULT_LINUXGPIO_PORT="gpiochip0"
 		;;
 	i[[3456]]86-*-*freebsd*|amd64-*-*freebsd*)
 		DEFAULT_PAR_PORT="/dev/ppi0"
 		DEFAULT_SER_PORT="/dev/cuad0"
+		DEFAULT_SPI_PORT="unknown"
 		DEFAULT_LINUXGPIO_PORT="unknown"
 		;;
 	*-*-*freebsd*)
 		DEFAULT_PAR_PORT="unknown"
 		DEFAULT_SER_PORT="/dev/cuad0"
+		DEFAULT_SPI_PORT="unknown"
 		DEFAULT_LINUXGPIO_PORT="unknown"
 		;;
 	*-*-solaris*)
 		DEFAULT_PAR_PORT="/dev/printers/0"
 		DEFAULT_SER_PORT="/dev/term/a"
+		DEFAULT_SPI_PORT="unknown"
 		DEFAULT_LINUXGPIO_PORT="unknown"
 		;;
 	*-*-msdos* | *-*-mingw32* | *-*-cygwin* | *-*-windows*)
 		DEFAULT_PAR_PORT="lpt1"
 		DEFAULT_SER_PORT="com1"
+		DEFAULT_SPI_PORT="unknown"
 		DEFAULT_LINUXGPIO_PORT="unknown"
 		;;
 	*)
 		DEFAULT_PAR_PORT="unknown"
 		DEFAULT_SER_PORT="unknown"
+		DEFAULT_SPI_PORT="unknown"
 		DEFAULT_LINUXGPIO_PORT="unknown"
 		;;
 esac
@@ -509,6 +563,9 @@ else
 	confsubst="-e /^@HAVE_PARPORT_BEGIN@/,/^@HAVE_PARPORT_END@/d"
 fi
 
+AC_MSG_CHECKING([for SPI device])
+AC_MSG_RESULT([$DEFAULT_SPI_PORT])
+AC_SUBST([DEFAULT_SPI_PORT])
 
 if test "x$enabled_linuxgpio" = xyes; then
 	AC_MSG_CHECKING([for default linuxgpio port])
@@ -529,17 +586,27 @@ if test "x$enabled_linuxgpio" = xyes; then
 		have_libgpiod=yes
 		have_libgpiodv2=yes
 		AC_DEFINE([HAVE_LIBGPIOD], [1], [Linux libgpiod available])
-		AC_DEFINE([HAVE_LIBGPIOD_V2], [1], [Linux libgpiod (v2.x) available])
+		AC_DEFINE([HAVE_LIBGPIOD_V1_6], [0], [Linux libgpiod >= v1.6 but < 2.0 available])
+		AC_DEFINE([HAVE_LIBGPIOD_V2], [1], [Linux libgpiod >= 2.0 available])
 	], [
-		PKG_CHECK_MODULES([LIBGPIOD], [libgpiod], [
+		PKG_CHECK_MODULES([LIBGPIOD], [libgpiod >= 1.6], [
 			have_libgpiod=yes
-			have_libgpiodv2=no
+			have_libgpiodv1_6=yes
 			AC_DEFINE([HAVE_LIBGPIOD], [1], [Linux libgpiod available])
+			AC_DEFINE([HAVE_LIBGPIOD_V1_6], [1], [Linux libgpiod >= v1.6 but < 2.0 available])
+			AC_DEFINE([HAVE_LIBGPIOD_V2], [0], [Linux libgpiod >= 2.0 available])
 		], [
-			have_libgpiod=no
-			have_libgpiodv2=no
+			PKG_CHECK_MODULES([LIBGPIOD], [libgpiod], [
+				have_libgpiod=yes
+				AC_DEFINE([HAVE_LIBGPIOD], [1], [Linux libgpiod available])
+				AC_DEFINE([HAVE_LIBGPIOD_V1_6], [0], [Linux libgpiod >= v1.6 but < 2.0 available])
+				AC_DEFINE([HAVE_LIBGPIOD_V2], [0], [Linux libgpiod >= 2.0 available])
+			], [
+				have_libgpiod=no
+			])
 		])
 	])
+
 else
 	confsubst="$confsubst -e /^@HAVE_LINUXGPIO_BEGIN@/,/^@HAVE_LINUXGPIO_END@/d"
 fi
@@ -748,9 +815,11 @@ fi
 if test "x$enabled_linuxgpio" = xyes; then
    echo "ENABLED    linuxgpio"
    if test "x$have_libgpiodv2" = xyes; then
-       echo "DO HAVE    libgpiod (v2.x)"
+       echo "DO HAVE    libgpiod (>= 2.0)"
+   elif test "x$have_libgpiodv1_6" = xyes; then
+       echo "DO HAVE    libgpiod (>= 1.6 < 2.0)"
    elif test "x$have_libgpiod" = xyes; then
-       echo "DO HAVE    libgpiod"
+       echo "DO HAVE    libgpiod (< 1.6)"
    else
        echo "DON'T HAVE libgpiod"
    fi

@@ -16,14 +16,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 #ifndef arduino_h__
 #define arduino_h__
 
 extern const char arduino_desc[];
 void arduino_initpgm(PROGRAMMER *pgm);
-
 #endif
-
-

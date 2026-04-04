@@ -1,6 +1,6 @@
 /*
  * avrdude - A Downloader/Uploader for AVR device programmers
- * Copyright (C) 2002-2004  Brian S. Dean <bsd@bdmicro.com>
+ * Copyright (C) 2002-2004 Brian S. Dean <bsd@bdmicro.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* $Id$ */
-
 #ifndef jtagmkI_h
 #define jtagmkI_h
 
@@ -25,12 +23,10 @@
 extern "C" {
 #endif
 
-extern const char jtagmkI_desc[];
-void jtagmkI_initpgm(PROGRAMMER *pgm);
+  extern const char jtagmkI_desc[];
+  void jtagmkI_initpgm(PROGRAMMER *pgm);
 
 #ifdef __cplusplus
 }
 #endif
-
 #endif
-
