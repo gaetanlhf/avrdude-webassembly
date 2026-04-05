@@ -1,0 +1,7 @@
+services:
+  build:
+    build: .
+    volumes:
+      - ./output:/output
+    command: >
+      sh -c "cp /src/avrdude.js /src/avrdude-worker.js /src/avrdude.wasm /src/avrdude.conf /output/"
