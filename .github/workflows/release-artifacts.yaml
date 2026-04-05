@@ -1,0 +1,29 @@
+name: Upload build artifacts to release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build via docker compose
+        run: |
+          mkdir -p output
+          docker compose up --build --exit-code-from build build
+
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            output/avrdude.js
+            output/avrdude.wasm
+            output/avrdude.conf
+            output/avrdude-worker.js
