@@ -23,12 +23,61 @@
 cmake_minimum_required(VERSION 3.14)
 project(avrdude VERSION 8.1 LANGUAGES C CXX)
 
+include(FetchContent)
+
 # check if we are doing emscripten
 if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     # print a message
     message(STATUS "Building for Emscripten")
     set(EMSCRIPTEN 1)
     add_subdirectory(libserial)
+
+    # Fetch and build libusb with Emscripten WebUSB backend
+    FetchContent_Declare(libusb
+        GIT_REPOSITORY https://github.com/libusb/libusb.git
+        GIT_TAG v1.0.27
+    )
+    FetchContent_MakeAvailable(libusb)
+
+    # Copy our config.h to a directory libusb can find
+    set(LIBUSB_CONFIG_DIR ${CMAKE_CURRENT_BINARY_DIR}/libusb_config)
+    file(MAKE_DIRECTORY ${LIBUSB_CONFIG_DIR})
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libusb_config.h ${LIBUSB_CONFIG_DIR}/config.h COPYONLY)
+
+    # Build libusb as a static library from sources
+    set(LIBUSB_SRC_DIR ${libusb_SOURCE_DIR}/libusb)
+    add_library(usb-1.0 STATIC
+        ${LIBUSB_SRC_DIR}/core.c
+        ${LIBUSB_SRC_DIR}/descriptor.c
+        ${LIBUSB_SRC_DIR}/hotplug.c
+        ${LIBUSB_SRC_DIR}/io.c
+        ${LIBUSB_SRC_DIR}/strerror.c
+        ${LIBUSB_SRC_DIR}/sync.c
+        ${LIBUSB_SRC_DIR}/os/events_posix.c
+        ${LIBUSB_SRC_DIR}/os/threads_posix.c
+        ${LIBUSB_SRC_DIR}/os/emscripten_webusb.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/libserial/libusb_bindings.cpp
+    )
+    # Create libusb-1.0/ include alias so #include <libusb-1.0/libusb.h> works
+    set(LIBUSB_COMPAT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libusb_compat_include)
+    file(MAKE_DIRECTORY ${LIBUSB_COMPAT_INCLUDE_DIR}/libusb-1.0)
+    file(CREATE_LINK ${LIBUSB_SRC_DIR}/libusb.h ${LIBUSB_COMPAT_INCLUDE_DIR}/libusb-1.0/libusb.h COPY_ON_ERROR)
+
+    target_include_directories(usb-1.0
+        PUBLIC ${LIBUSB_SRC_DIR} ${LIBUSB_COMPAT_INCLUDE_DIR}
+        PRIVATE ${LIBUSB_CONFIG_DIR} ${LIBUSB_SRC_DIR}/os
+    )
+    target_compile_options(usb-1.0 PRIVATE --bind -pthread)
+    set_source_files_properties(
+        ${LIBUSB_SRC_DIR}/os/emscripten_webusb.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/libserial/libusb_bindings.cpp
+        PROPERTIES COMPILE_FLAGS "-std=c++20"
+    )
+
+    # Tell avrdude that libusb-1.0 is available
+    set(HAVE_LIBUSB_1_0 1)
+    set(LIB_LIBUSB_1_0 usb-1.0)
+    set(HAVE_LIBUSB_1_0_LIBUSB_H 1)
 endif ()
 
 set(CMAKE_C_STANDARD 17)
@@ -161,40 +210,42 @@ endif()
 # -------------------------------------
 # Find libusb
 
-find_library(HAVE_LIBUSB NAMES ${PREFERRED_LIBUSB})
-if(HAVE_LIBUSB)
-    set(LIB_LIBUSB ${HAVE_LIBUSB})
-endif()
+if(NOT EMSCRIPTEN)
+    find_library(HAVE_LIBUSB NAMES ${PREFERRED_LIBUSB})
+    if(HAVE_LIBUSB)
+        set(LIB_LIBUSB ${HAVE_LIBUSB})
+    endif()
 
-find_library(HAVE_LIBUSB_1_0 NAMES ${PREFERRED_LIBUSB_1_0})
-if(HAVE_LIBUSB_1_0)
-    set(LIB_LIBUSB_1_0 ${HAVE_LIBUSB_1_0})
-endif()
+    find_library(HAVE_LIBUSB_1_0 NAMES ${PREFERRED_LIBUSB_1_0})
+    if(HAVE_LIBUSB_1_0)
+        set(LIB_LIBUSB_1_0 ${HAVE_LIBUSB_1_0})
+    endif()
 
-# FreeBSD's library 'libusb' supports both the libusb-0.1 and libusb-1.0 API.
-if (HAVE_LIBUSB AND CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-    set(HAVE_LIBUSB_1_0 ${HAVE_LIBUSB})
-endif()
+    # FreeBSD's library 'libusb' supports both the libusb-0.1 and libusb-1.0 API.
+    if (HAVE_LIBUSB AND CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+        set(HAVE_LIBUSB_1_0 ${HAVE_LIBUSB})
+    endif()
 
-find_library(HAVE_LIBUSB_WIN32 NAMES libusb0.a usb0)
+    find_library(HAVE_LIBUSB_WIN32 NAMES libusb0.a usb0)
 
-if(HAVE_LIBUSB OR HAVE_LIBUSB_1_0 OR HAVE_LIBUSB_WIN32)
-    check_include_file(usb.h HAVE_USB_H)
-    check_include_file(lusb0_usb.h HAVE_LUSB0_USB_H)
-    check_include_file(libusb.h HAVE_LIBUSB_H)
-    check_include_file(libusb-1.0/libusb.h HAVE_LIBUSB_1_0_LIBUSB_H)
+    if(HAVE_LIBUSB OR HAVE_LIBUSB_1_0 OR HAVE_LIBUSB_WIN32)
+        check_include_file(usb.h HAVE_USB_H)
+        check_include_file(lusb0_usb.h HAVE_LUSB0_USB_H)
+        check_include_file(libusb.h HAVE_LIBUSB_H)
+        check_include_file(libusb-1.0/libusb.h HAVE_LIBUSB_1_0_LIBUSB_H)
 
-    if((USE_LIBUSBWIN32 OR NOT HAVE_LIBUSB) AND HAVE_LIBUSB_WIN32)
-        set(HAVE_LIBUSB ${HAVE_LIBUSB_WIN32})
-        set(LIB_LIBUSB ${HAVE_LIBUSB_WIN32})
-        unset(HAVE_USB_H CACHE)
-    elseif(NOT HAVE_USB_H)
-        find_path(LIBUSB_COMPAT_DIR libusb-compat/usb.h)
-        if(LIBUSB_COMPAT_DIR)
-            set(LIBUSB_COMPAT_DIR ${LIBUSB_COMPAT_DIR}/libusb-compat)
-            set(HAVE_USB_H 1)
-        else()
-            unset(LIBUSB_COMPAT_DIR CACHE)
+        if((USE_LIBUSBWIN32 OR NOT HAVE_LIBUSB) AND HAVE_LIBUSB_WIN32)
+            set(HAVE_LIBUSB ${HAVE_LIBUSB_WIN32})
+            set(LIB_LIBUSB ${HAVE_LIBUSB_WIN32})
+            unset(HAVE_USB_H CACHE)
+        elseif(NOT HAVE_USB_H)
+            find_path(LIBUSB_COMPAT_DIR libusb-compat/usb.h)
+            if(LIBUSB_COMPAT_DIR)
+                set(LIBUSB_COMPAT_DIR ${LIBUSB_COMPAT_DIR}/libusb-compat)
+                set(HAVE_USB_H 1)
+            else()
+                unset(LIBUSB_COMPAT_DIR CACHE)
+            endif()
         endif()
     endif()
 endif()
