@@ -134,30 +134,51 @@ int avrdude_message2(FILE *fp, int lno, const char *file, const char *func,
   // Reduce effective verbosity level by number of -q above one when printing to stderr
   if((quell_progress < 2 || fp != stderr? verbose: verbose + 1 - quell_progress) >= msglvl) {
     if(msgmode & MSG2_LEFT_MARGIN && !bols[bi].bol) {
+#ifdef __EMSCRIPTEN__
+      avrdude_log("\n");
+#else
       fprintf(fp, "\n");
+#endif
       bols[bi].bol = 1;
     }
     // Keep vertical tab at start of format string as conditional new line
     if(*format == '\v') {
       format++;
       if(!bols[bi].bol) {
+#ifdef __EMSCRIPTEN__
+        avrdude_log("\n");
+#else
         fprintf(fp, "\n");
+#endif
         bols[bi].bol = 1;
       }
     }
 
     if(msgmode & (MSG2_PROGNAME | MSG2_TYPE)) {
       if(msgmode & MSG2_PROGNAME) {
+#ifdef __EMSCRIPTEN__
+        avrdude_log(progname);
+#else
         fprintf(fp, "%s", progname);
+#endif
         bols[bi].bol = 0;
       }
       if(msgmode & MSG2_TYPE) {
         const char *mt = avrdude_message_type(msglvl);
+        char mtbuf[64];
 
+#ifdef __EMSCRIPTEN__
+        if(bols[bi].bol)
+          snprintf(mtbuf, sizeof mtbuf, "%c%s", msgmode & (MSG2_UCFIRST)? toupper(*mt & 0xff): *mt, mt + 1);
+        else
+          snprintf(mtbuf, sizeof mtbuf, " %s", mt);
+        avrdude_log(mtbuf);
+#else
         if(bols[bi].bol)
           fprintf(fp, "%c%s", msgmode & (MSG2_UCFIRST)? toupper(*mt & 0xff): *mt, mt + 1);
         else
           fprintf(fp, " %s", mt);
+#endif
         bols[bi].bol = 0;
       }
       if(verbose >= MSG_NOTICE2) {
@@ -169,17 +190,45 @@ int avrdude_message2(FILE *fp, int lno, const char *file, const char *func,
 #endif
 
         bfname = bfname? bfname + 1: file;
+#ifdef __EMSCRIPTEN__
+        char dbgbuf[256];
+        if(msgmode & MSG2_FUNCTION) {
+          snprintf(dbgbuf, sizeof dbgbuf, " %s()", func);
+          avrdude_log(dbgbuf);
+        }
+        if(msgmode & MSG2_FILELINE) {
+          snprintf(dbgbuf, sizeof dbgbuf, " %s %d", bfname, lno);
+          avrdude_log(dbgbuf);
+        }
+#else
         if(msgmode & MSG2_FUNCTION)
           fprintf(fp, " %s()", func);
         if(msgmode & MSG2_FILELINE)
           fprintf(fp, " %s %d", bfname, lno);
+#endif
       }
+#ifdef __EMSCRIPTEN__
+      avrdude_log(": ");
+#else
       fprintf(fp, ": ");
+#endif
     } else if(msgmode & MSG2_INDENT1) {
+      char indbuf[64];
+#ifdef __EMSCRIPTEN__
+      snprintf(indbuf, sizeof indbuf, "%*s", (int) strlen(progname) + 1, "");
+      avrdude_log(indbuf);
+#else
       fprintf(fp, "%*s", (int) strlen(progname) + 1, "");
+#endif
       bols[bi].bol = 0;
     } else if(msgmode & MSG2_INDENT2) {
+      char indbuf[64];
+#ifdef __EMSCRIPTEN__
+      snprintf(indbuf, sizeof indbuf, "%*s", (int) strlen(progname) + 2, "");
+      avrdude_log(indbuf);
+#else
       fprintf(fp, "%*s", (int) strlen(progname) + 2, "");
+#endif
       bols[bi].bol = 0;
     }
     // Figure out whether this print will leave us at beginning of line
@@ -205,10 +254,20 @@ int avrdude_message2(FILE *fp, int lno, const char *file, const char *func,
     }
 
     if(*p) {                    // Finally: print!
+#ifdef __EMSCRIPTEN__
+      if(bols[bi].bol && (msgmode & MSG2_UCFIRST)) {
+        char ucbuf[2] = { toupper(*p & 0xff), '\0' };
+        avrdude_log(ucbuf);
+        avrdude_log(p + 1);
+      } else {
+        avrdude_log(p);
+      }
+#else
       if(bols[bi].bol && (msgmode & MSG2_UCFIRST))
         fprintf(fp, "%c%s", toupper(*p & 0xff), p + 1);
       else
         fprintf(fp, "%s", p);
+#endif
       bols[bi].bol = p[strlen(p) - 1] == '\n';
     }
     mmt_free(p);
