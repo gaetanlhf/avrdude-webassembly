@@ -34,7 +34,7 @@ AVRDUDE WebAssembly is a port of [AVRDUDE](https://github.com/avrdudes/avrdude) 
 
 ## Installation
 
-Prebuilt artifacts (`avrdude.js`, `avrdude-worker.js`, `avrdude.wasm`, `avrdude.conf`) are attached to each [release](https://github.com/gaetanlhf/avrdude-webassembly/releases). Drop the four files next to your app and import `avrdude.js` as an ES module.
+Prebuilt artifacts (`avrdude.js`, `avrdude-worker.js`, `avrdude.wasm`, `avrdude.conf`) are available as build artifacts from the [latest CI run](https://github.com/gaetanlhf/avrdude-webassembly/actions). Download the `avrdude-wasm` artifact, extract the four files next to your app, and import `avrdude.js` as an ES module.
 
 ### Build from source (Docker)
 
